@@ -566,8 +566,47 @@ constructor ( object, preview ) {
 		fly.keys.clear();
 	}
 
+	// While flying, the target travels along at a fixed distance in front of the camera. Afterwards,
+	// move it onto the model in view, so that orbit, pan and zoom speeds match the distance to the model again
+	var retargetAfterFly = function () {
+
+		var raycaster = new THREE.Raycaster();
+		var center = new THREE.Vector2( 0, 0 );
+		var forward = new THREE.Vector3();
+		var box = new THREE.Box3();
+		var box_center = new THREE.Vector3();
+
+		return function retargetAfterFly() {
+			let meshes = [];
+			for ( let element of Outliner.elements ) {
+				if ( element.mesh && element.visibility !== false ) meshes.push( element.mesh );
+			}
+			if ( !meshes.length ) return;
+
+			scope.object.updateMatrixWorld();
+			scope.object.getWorldDirection( forward );
+			raycaster.setFromCamera( center, scope.object );
+			let hit = raycaster.intersectObjects( meshes, false )[ 0 ];
+			let depth;
+			if ( hit ) {
+				depth = hit.distance;
+			} else {
+				box.makeEmpty();
+				meshes.forEach( mesh => box.expandByObject( mesh ) );
+				depth = box.getCenter( box_center ).sub( scope.object.position ).dot( forward );
+			}
+			// Model is behind the camera: keep the current target
+			if ( !( depth > 0 ) ) return;
+
+			scope.target.copy( scope.object.position ).addScaledVector( forward, Math.max( depth, 1 ) );
+			scope.update();
+		};
+
+	}();
+
 	function handleMouseUpFly() {
 		cancelAnimationFrame( fly.frame );
+		if ( scope.hasMoved ) retargetAfterFly();
 		fly.keys.clear();
 		window.removeEventListener( 'keydown', onFlyKeyDown, true );
 		window.removeEventListener( 'keyup', onFlyKeyUp, true );
