@@ -592,10 +592,16 @@ constructor ( object, preview ) {
 	//
 
 	// Pens (especially with Windows Ink) may not emit compatibility mouse events, so handle them as pointer events
+	// Windows Ink can also emit touch events for the same pen stroke, which would hijack it as a one-finger rotate
 	let pen_active = false;
+	let pen_pressed = false;
+	function onPenRelease( event ) {
+		if ( event.pointerType === 'pen' ) pen_pressed = false;
+	}
 	function onPointerDown( event ) {
 
 		if ( event.pointerType !== 'pen' ) return;
+		pen_pressed = true;
 		pen_active = true;
 		onMouseDown( event );
 		if ( state === STATE.NONE ) pen_active = false;
@@ -727,7 +733,7 @@ constructor ( object, preview ) {
 
 	function onTouchStart( event ) {
 
-		if ( scope.isEnabled() === false ) return;
+		if ( scope.isEnabled() === false || pen_pressed ) return;
 
 		event.preventDefault();
 
@@ -772,7 +778,7 @@ constructor ( object, preview ) {
 
 	function onTouchMove( event ) {
 
-		if ( scope.isEnabled() === false ) return;
+		if ( scope.isEnabled() === false || pen_pressed ) return;
 		if ( !PointerTarget.requestTarget(PointerTarget.types.navigate) ) return;
 
 		event.preventDefault();
@@ -808,7 +814,7 @@ constructor ( object, preview ) {
 
 	function onTouchEnd( event ) {
 
-		if ( scope.isEnabled() === false ) return;
+		if ( scope.isEnabled() === false || pen_pressed || pen_active ) return;
 		scope.dispatchEvent( endEvent );
 		state = STATE.NONE;
 		scope.hasMoved = false;
@@ -816,6 +822,8 @@ constructor ( object, preview ) {
 	}
 
 	scope.domElement.addEventListener( 'pointerdown', onPointerDown, false );
+	document.addEventListener( 'pointerup', onPenRelease, false );
+	document.addEventListener( 'pointercancel', onPenRelease, false );
 	scope.domElement.addEventListener( 'mousedown', onMouseDown, false );
 	scope.domElement.addEventListener( 'wheel', onMouseWheel, false );
 	scope.domElement.addEventListener( 'touchstart', onTouchStart, false );
