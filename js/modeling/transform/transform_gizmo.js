@@ -264,13 +264,16 @@ import { TransformerModule } from "./transform_modules";
 
 			this.highlight = function ( axis ) {
 
-				var axis_letter = typeof axis === 'string' && axis.substr(-1).toLowerCase();
+				// Accepts a single axis name, or an array of names when moving on a plane
+				var axes = axis instanceof Array ? axis : [axis];
 
 				this.traverse( function( child ) {
 
 					if ( child.material && child.material.highlight ) {
 
-						if ( child.name === axis && axis_letter && (child.scale[axis_letter] < 5 || axis == 'E') ) {
+						var axis_letter = axes.includes( child.name ) && typeof child.name === 'string' && child.name.substr(-1).toLowerCase();
+
+						if ( axis_letter && (child.scale[axis_letter] < 5 || child.name == 'E') ) {
 
 							child.material.highlight( true );
 
@@ -1003,6 +1006,8 @@ import { TransformerModule } from "./transform_modules";
 			this.size = 1;
 			this.axis = null;
 			this.hoverAxis = null;
+			// Set while Shift-dragging a move arrow: the two axes of the plane perpendicular to it
+			this.plane_axes = null;
 			this.direction = true;
 			this.last_valid_position = new THREE.Vector3();
 			this.rotation_selection = new THREE.Euler();
@@ -1059,6 +1064,7 @@ import { TransformerModule } from "./transform_modules";
 
 				var point = new THREE.Vector3();
 				var offset = new THREE.Vector3();
+				var plane_values = {};
 				var scale = 1;
 				var eye = new THREE.Vector3();
 
@@ -1155,7 +1161,7 @@ import { TransformerModule } from "./transform_modules";
 					this.rotation.set(0, 0, 0);
 					_gizmo[ _mode ].update( worldRotation, eye );
 				}
-				_gizmo[ _mode ].highlight( scope.axis );
+				_gizmo[ _mode ].highlight( getHighlightAxis() );
 
 				SplineGizmos.updateAllGizmoTransforms();
 				SplineGizmos.tryAssignIndex(scope.lastGizmoIntersected);
@@ -1261,13 +1267,20 @@ import { TransformerModule } from "./transform_modules";
 				}
 			}
 			function extendTransformLine(long) {
-				let axis = scope.axis.substr(-1).toLowerCase();
-				let axis2 = scope.axis.length == 2 && scope.axis[0] != 'N' && scope.axis[0].toLowerCase();
+				if (scope.plane_axes) {
+					scope.plane_axes.forEach(axis => extendTransformLineOnAxis(long, axis));
+				} else {
+					let axis = scope.axis.substr(-1).toLowerCase();
+					let axis2 = scope.axis.length == 2 && scope.axis[0] != 'N' && scope.axis[0].toLowerCase();
 
-				extendTransformLineOnAxis(long, axis);
-				if (axis2) extendTransformLineOnAxis(long, axis2);
+					extendTransformLineOnAxis(long, axis);
+					if (axis2) extendTransformLineOnAxis(long, axis2);
+				}
 
-				_gizmo[ _mode ].highlight( scope.axis );
+				_gizmo[ _mode ].highlight( getHighlightAxis() );
+			}
+			function getHighlightAxis() {
+				return scope.plane_axes ? scope.plane_axes.map(axis => axis.toUpperCase()) : scope.axis;
 			}
 
 			function onPointerHover( event ) {
@@ -1338,9 +1351,17 @@ import { TransformerModule } from "./transform_modules";
 						scope.dispatchEvent( mouseDownEvent );
 
 						scope.axis = intersect.object.name;
+						// Shift-grabbing a move arrow moves on the plane perpendicular to that arrow
+						let plane_normal = (Toolbox.selected.transformerMode === 'translate' && event.shiftKey && ['X', 'Y', 'Z'].includes(scope.axis)) ? scope.axis.toLowerCase() : null;
+						scope.plane_axes = plane_normal ? ['x', 'y', 'z'].filter(axis => axis != plane_normal) : null;
+						plane_values = {};
 						scope.update();
 						eye.copy( camPosition ).sub( worldPosition ).normalize();
-						_gizmo[ _mode ].setActivePlane( scope.axis, eye );
+						if (scope.plane_axes) {
+							_gizmo[ _mode ].activePlane = _gizmo[ _mode ].planes[ scope.plane_axes.join('').toUpperCase() ];
+						} else {
+							_gizmo[ _mode ].setActivePlane( scope.axis, eye );
+						}
 						var planeIntersect = intersectObjects( pointer, [ _gizmo[ _mode ].activePlane ] );
 
 						scope.last_valid_position.copy(scope.position)
@@ -1414,7 +1435,31 @@ import { TransformerModule } from "./transform_modules";
 					}
 				}
 
-				if (module) {
+				if (module && scope.plane_axes) {
+					// Move along both plane axes, tracking each axis' value separately
+					for (let plane_axis of scope.plane_axes) {
+						let values = plane_values[plane_axis] || (plane_values[plane_axis] = {previous: null, initial: null});
+						module.previous_value = values.previous;
+						module.initial_value = values.initial;
+						module.dispatchMove({
+							event,
+							point,
+							axis: plane_axis,
+							axis_number: getAxisNumber(plane_axis),
+							rotate_normal,
+							direction: 1,
+							angle
+						});
+						values.previous = module.previous_value;
+						values.initial = module.initial_value;
+					}
+					if (module.has_changed) {
+						Blockbench.setCursorTooltip(scope.plane_axes.map(plane_axis => {
+							return plane_axis.toUpperCase() + ' ' + trimFloatNumber(plane_values[plane_axis].previous || 0);
+						}).join('  '));
+					}
+
+				} else if (module) {
 					module.dispatchMove({
 						event,
 						point,
@@ -1478,6 +1523,7 @@ import { TransformerModule } from "./transform_modules";
 					}
 				}
 				_dragging = false;
+				scope.plane_axes = null;
 
 				if (isTouchEvent(event)) {
 					// Force "rollover"
