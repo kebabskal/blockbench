@@ -706,6 +706,9 @@ constructor ( object, preview ) {
 	this.stopMovement = function(event) {
 		onMouseUp()
 	}
+	this.isNavigating = function() {
+		return state !== STATE.NONE;
+	}
 
 	function onMouseWheel( event ) {
 

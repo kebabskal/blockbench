@@ -1429,6 +1429,14 @@ export class Preview {
 		}
 	}
 	mousemove(event: MouseEvent) {
+		if (this.controls?.isNavigating?.()) {
+			// Don't highlight what's under the cursor while rotating, panning or zooming, to avoid flickering
+			Canvas.updateCubeHighlights(null);
+			Canvas.scene.remove(Canvas.brush_outline);
+			if (Canvas.hover_helper_line.parent) Canvas.hover_helper_line.parent.remove(Canvas.hover_helper_line);
+			if (Canvas.hover_helper_vertex.parent) Canvas.hover_helper_vertex.parent.remove(Canvas.hover_helper_vertex);
+			return;
+		}
 		let data = this.raycast(event);
 		if (Settings.get('highlight_cubes')) {
 			Canvas.updateCubeHighlights(data && data.element);
