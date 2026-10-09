@@ -874,6 +874,25 @@ BARS.defineActions(function() {
 			updateSelection();
 		}
 	})
+	new Action('toggle_transform_space', {
+		icon: 'public',
+		category: 'transform',
+		condition: {modes: ['edit', 'animate', 'pose']},
+		keybind: new Keybind({key: 't'}),
+		click() {
+			// Toggle the space select of the current tool between local and global
+			let select;
+			switch (Toolbox.selected.id) {
+				case 'rotate_tool': select = BarItems.rotation_space; break;
+				case 'pivot_tool': select = BarItems.transform_pivot_space; break;
+				default: select = BarItems.transform_space; break;
+			}
+			if (!Condition(select.condition)) return;
+			let value = select.get() == 'local' ? 'global' : 'local';
+			select.change(value);
+			Blockbench.showQuickMessage(tl('action.transform_space') + ': ' + tl('action.transform_space.' + value), 1000);
+		}
+	})
 	new BarSelect('vertex_snap_mode', {
 		options: {
 			move: true,

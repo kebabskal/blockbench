@@ -311,7 +311,7 @@ export const Timeline = {
 	setup() {
 		let timeline_body = Panels.timeline.node.querySelector('#timeline_body');
 		timeline_body.addEventListener('mousedown', e => {
-			if (e.which === 2 || (Keybinds.extra.preview_drag.keybind.isTriggered(e) && e.which !== 1)) {
+			if (e.which === 2 || ((Keybinds.extra.preview_drag.keybind.isTriggered(e) || Keybinds.extra.preview_fly.keybind.isTriggered(e)) && e.which !== 1)) {
 				let pos = [e.clientX, e.clientY];
 				let timeline = e.currentTarget;
 				function move(e2) {

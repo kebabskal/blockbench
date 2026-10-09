@@ -219,7 +219,7 @@ constructor ( object, preview ) {
 	var startEvent = { type: 'start' };
 	var endEvent = { type: 'end' };
 
-	var STATE = { NONE: - 1, ROTATE: 0, DOLLY: 1, PAN: 2, TOUCH_ROTATE: 3, TOUCH_DOLLY_PAN: 4 };
+	var STATE = { NONE: - 1, ROTATE: 0, DOLLY: 1, PAN: 2, TOUCH_ROTATE: 3, TOUCH_DOLLY_PAN: 4, FLY: 5 };
 
 	var state = STATE.NONE;
 
@@ -445,6 +445,144 @@ constructor ( object, preview ) {
 
 	}
 
+	// Fly camera: hold the fly button to look around, WASD to move, Q/E to move down/up,
+	// Shift to move faster, Ctrl to move slower, scroll to change the fly speed
+	var fly = {
+		keys: new Set(),
+		speed_modifier: 1,
+		base_speed: 1,
+		look_distance: 0,
+		pointer_locked: false,
+		frame: null,
+		last_time: 0,
+	};
+	var fly_codes = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE'];
+	var flySpherical = new THREE.Spherical();
+	var flyOffset = new THREE.Vector3();
+
+	function markFlyMoved() {
+		scope.hasMoved = true;
+		// Keyboard-only movement doesn't move the cursor, so make sure releasing doesn't open the context menu
+		if (scope.preview) scope.preview.static_rclick = false;
+	}
+
+	function handleMouseDownFly( event ) {
+		fly.keys.clear();
+		fly.look_distance = 0;
+		fly.base_speed = Math.max( scope.object.position.distanceTo( scope.target ), 4 ) * 0.75;
+		fly.last_time = performance.now();
+		window.addEventListener( 'keydown', onFlyKeyDown, true );
+		window.addEventListener( 'keyup', onFlyKeyUp, true );
+		window.addEventListener( 'blur', onFlyBlur, false );
+		fly.frame = requestAnimationFrame( flyFrame );
+	}
+
+	function handleMouseMoveFly( event ) {
+		let dx = event.movementX || 0;
+		let dy = event.movementY || 0;
+		if ( !dx && !dy ) return;
+
+		fly.look_distance += Math.abs( dx ) + Math.abs( dy );
+		if ( fly.look_distance > 3 ) {
+			markFlyMoved();
+			// Lock the pointer once the camera is actually moving, so a plain right click still opens the context menu
+			if ( !fly.pointer_locked && scope.domElement.requestPointerLock ) {
+				fly.pointer_locked = true;
+				try {
+					let result = scope.domElement.requestPointerLock();
+					if ( result && result.catch ) result.catch( () => {} );
+				} catch ( err ) {}
+			}
+		}
+
+		var element = scope.domElement === document ? scope.domElement.body : scope.domElement;
+		let clamped_viewport_size = Math.clamp( Math.min( element.clientWidth + element.clientHeight ), 600, 1200 );
+		let factor = Math.PI / clamped_viewport_size * scope.rotateSpeed;
+
+		// Rotate the look direction around the camera position instead of around the target
+		flyOffset.copy( scope.target ).sub( scope.object.position );
+		flySpherical.setFromVector3( flyOffset );
+		flySpherical.theta -= dx * factor;
+		flySpherical.phi = Math.clamp( flySpherical.phi + dy * factor, 0.01, Math.PI - 0.01 );
+		flyOffset.setFromSpherical( flySpherical );
+		scope.target.copy( scope.object.position ).add( flyOffset );
+
+		scope.update();
+	}
+
+	var flyFrame = function () {
+
+		var move = new THREE.Vector3();
+		var axis = new THREE.Vector3();
+
+		return function flyFrame( time ) {
+			if ( state !== STATE.FLY ) return;
+			let delta_time = Math.clamp( ( time - fly.last_time ) / 1000, 0, 0.1 );
+			fly.last_time = time;
+
+			move.set( 0, 0, 0 );
+			if ( fly.keys.size ) {
+				scope.object.getWorldDirection( axis );
+				if ( fly.keys.has( 'KeyW' ) ) move.add( axis );
+				if ( fly.keys.has( 'KeyS' ) ) move.sub( axis );
+				axis.setFromMatrixColumn( scope.object.matrix, 0 );
+				if ( fly.keys.has( 'KeyD' ) ) move.add( axis );
+				if ( fly.keys.has( 'KeyA' ) ) move.sub( axis );
+				if ( fly.keys.has( 'KeyE' ) ) move.y += 1;
+				if ( fly.keys.has( 'KeyQ' ) ) move.y -= 1;
+			}
+			if ( move.lengthSq() > 0 ) {
+				let speed = fly.base_speed * fly.speed_modifier;
+				if ( Pressing.shift ) speed *= 3;
+				if ( Pressing.ctrl ) speed *= 0.25;
+				move.normalize().multiplyScalar( speed * delta_time );
+				scope.object.position.add( move );
+				scope.target.add( move );
+				markFlyMoved();
+				scope.update();
+			}
+			fly.frame = requestAnimationFrame( flyFrame );
+		};
+
+	}();
+
+	function onFlyKeyDown( event ) {
+		if ( state !== STATE.FLY || !fly_codes.includes( event.code ) ) return;
+		// Keep fly keys from triggering keybinds while flying
+		event.preventDefault();
+		event.stopImmediatePropagation();
+		fly.keys.add( event.code );
+	}
+
+	function onFlyKeyUp( event ) {
+		fly.keys.delete( event.code );
+		if ( state === STATE.FLY && fly_codes.includes( event.code ) ) {
+			event.preventDefault();
+			event.stopImmediatePropagation();
+		}
+	}
+
+	function onFlyBlur() {
+		fly.keys.clear();
+	}
+
+	function handleMouseUpFly() {
+		cancelAnimationFrame( fly.frame );
+		fly.keys.clear();
+		window.removeEventListener( 'keydown', onFlyKeyDown, true );
+		window.removeEventListener( 'keyup', onFlyKeyUp, true );
+		window.removeEventListener( 'blur', onFlyBlur, false );
+		if ( fly.pointer_locked ) {
+			fly.pointer_locked = false;
+			if ( document.pointerLockElement ) document.exitPointerLock();
+		}
+	}
+
+	function handleMouseWheelFly( event ) {
+		fly.speed_modifier = Math.clamp( fly.speed_modifier * ( event.deltaY < 0 ? 1.25 : 0.8 ), 0.05, 20 );
+		Blockbench.showQuickMessage( tl( 'message.fly_speed', [ trimFloatNumber( fly.speed_modifier, 2 ) ] ), 700 );
+	}
+
 	function handleMouseWheel( event ) {
 		let modifier = Math.abs(event.deltaY) >= 50 ? 1 : 0.25;
 		if ( event.deltaY < 0 ) {
@@ -643,6 +781,17 @@ constructor ( object, preview ) {
 			}
 			handleMouseDownDolly( event );
 			state = STATE.DOLLY;
+
+		} else if ( Keybinds.extra.preview_fly.keybind.isTriggered(event) ) {
+
+			// Flying needs a perspective camera, orthographic views pan instead
+			if ( scope.object instanceof THREE.PerspectiveCamera && scope.enableRotate !== false ) {
+				state = STATE.FLY;
+				handleMouseDownFly( event );
+			} else if ( scope.enablePan !== false ) {
+				handleMouseDownPan( event );
+				state = STATE.PAN;
+			}
 		}
 
 		if ( state !== STATE.NONE ) {
@@ -682,6 +831,10 @@ constructor ( object, preview ) {
 			if ( scope.enablePan === false ) return;
 			handleMouseMovePan( event );
 
+		} else if ( state === STATE.FLY ) {
+
+			handleMouseMoveFly( event );
+
 		}
 	}
 
@@ -692,6 +845,7 @@ constructor ( object, preview ) {
 		PointerTarget.endTarget(PointerTarget.types.navigate);
 
 		handleMouseUp( event );
+		if ( state === STATE.FLY ) handleMouseUpFly();
 
 		document.removeEventListener( 'mousemove', onMouseMove, false );
 		document.removeEventListener( 'mouseup', onMouseUp, false );
@@ -712,6 +866,12 @@ constructor ( object, preview ) {
 
 	function onMouseWheel( event ) {
 
+		if ( state === STATE.FLY && scope.isEnabled() ) {
+			event.preventDefault();
+			event.stopPropagation();
+			handleMouseWheelFly( event );
+			return;
+		}
 		if ( scope.isEnabled() === false || scope.enableZoom === false || ( state !== STATE.NONE && state !== STATE.ROTATE ) ) return;
 		let keybind = Keybinds.extra.preview_scroll_zoom.keybind;
 		let enabled = keybind.isTriggered(event);

@@ -23,7 +23,12 @@ BARS.defineActions(() => {
 	})
 	new KeybindItem('preview_drag', {
 		category: 'navigate',
-		keybind: new Keybind({key: 3})
+		keybind: new Keybind({key: 2})
+	})
+	new KeybindItem('preview_fly', {
+		description: 'keybind.preview_fly.desc',
+		category: 'navigate',
+		keybind: new Keybind({key: 3, shift: null, ctrl: null})
 	})
 	new KeybindItem('preview_zoom', {
 		category: 'navigate',

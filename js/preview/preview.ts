@@ -2637,8 +2637,7 @@ BARS.defineActions(function() {
 	new Toggle('preview_checkerboard', {
 		icon: 'fas.fa-chess-board',
 		category: 'view',
-		linked_setting: 'preview_checkerboard',
-		keybind: new Keybind({key: 't'})
+		linked_setting: 'preview_checkerboard'
 	})
 	new Toggle('uv_checkerboard', {
 		icon: 'fas.fa-chess-board',
