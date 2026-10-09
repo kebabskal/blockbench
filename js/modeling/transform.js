@@ -379,7 +379,8 @@ export function moveElementsInSpace(difference, axis, space = getEditTransformSp
 		}
 
 		// General Vertex translation (Mesh & SplineMesh)
-		if (!group_m && (el instanceof Mesh || el instanceof SplineMesh) && (el.getSelectedVertices().length > 0 || space >= 2)) {
+		// Whole meshes in local space are moved by their position instead, so the pivot moves along
+		if (!group_m && (el instanceof Mesh || el instanceof SplineMesh) && (el.getSelectedVertices().length > 0 || space >= 3 || (space == 2 && !el.position))) {
 
 			let selection_rotation = space == 3 && el.getSelectionRotation();
 			let selected_vertices = el.getSelectedVertices();
@@ -448,9 +449,14 @@ export function moveElementsInSpace(difference, axis, space = getEditTransformSp
 					el.local_pivot[axis] += difference;
 
 				} else {
-					if (el.getTypeBehavior('movable')) el.from[axis] += difference;
-					if (el.getTypeBehavior('resizable') && el.to) el.to[axis] += difference;
-					
+					// Move along the element's own axes, expressed in its parent's space, so the pivot can move along
+					let m = vector.set(0, 0, 0);
+					m[getAxisLetter(axis)] = difference;
+					m.applyQuaternion(el.mesh.quaternion);
+					if (el.getTypeBehavior('movable')) el.from.V3_add(m.x, m.y, m.z);
+					if (el.getTypeBehavior('resizable') && el.to) el.to.V3_add(m.x, m.y, m.z);
+					if (el.getTypeBehavior('rotatable') && el.origin) el.origin.V3_add(m.x, m.y, m.z);
+
 					if (el instanceof Cube && Format.cube_size_limiter && !settings.deactivate_size_limit.value) {
 						Format.cube_size_limiter.move(el);
 					}
@@ -465,29 +471,23 @@ export function moveElementsInSpace(difference, axis, space = getEditTransformSp
 				if (el.getTypeBehavior('resizable') && el.to instanceof Array) el.to[axis] += difference;
 				if (el.getTypeBehavior('rotatable') && !el.position) el.origin[axis] += difference;
 			} else {
-				let move_origin = !!groups;
+				let move_origin = true;
 				if (group_m) {
 					var m = group_m
 				} else {
 					var m = vector.set(0, 0, 0);
 					m[getAxisLetter(axis)] = difference;
-					
+
 					let parent = el.parent;
 					while (parent instanceof Group) {
 						if (!parent.rotation.allEqual(0)) break;
 						parent = parent.parent;
 					}
 
-					if (parent == 'root') {
-						// If none of the parent groups are rotated, move origin.
-						move_origin = true;
-					} else {
-						var rotation = new THREE.Quaternion();
-						if (el.mesh && !el.position && el instanceof Mesh == false) {
-							el.mesh.getWorldQuaternion(rotation);
-						} else if (el.parent instanceof Group) {
-							el.parent.mesh.getWorldQuaternion(rotation);
-						}
+					if (parent != 'root' && el.mesh && el.mesh.parent) {
+						// Convert the movement into the parent's space. Geometry and pivot move by the same
+						// amount, so the element moves rigidly and keeps its pivot relative to its geometry
+						let rotation = el.mesh.parent.getWorldQuaternion(quaternion);
 						m.applyQuaternion(rotation.invert());
 					}
 				}
