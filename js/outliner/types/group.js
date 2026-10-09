@@ -491,6 +491,14 @@ Group.addBehaviorOverride({
 		Outliner.buttons.visibility,
 	];
 	Group.prototype.menu = new Menu([
+		new MenuSeparator('add_element'),
+		{
+			id: 'add_element',
+			name: 'action.add_element',
+			icon: 'add_2',
+			condition: {modes: ['edit']},
+			children: () => BarItems.add_element.side_menu.structure
+		},
 		...Outliner.control_menu_group,
 		new MenuSeparator('settings'),
 		'edit_bedrock_binding',

@@ -450,6 +450,17 @@ BARS.defineActions(function() {
 		icon: 'fa-gem',
 		category: 'edit',
 		condition: {modes: ['edit'], method: () => (Format.meshes)},
+		side_menu: new Menu('add_mesh_shapes', Object.keys(SHAPE_OPTIONS).map((shape: keyof typeof SHAPE_OPTIONS) => ({
+			id: shape,
+			name: SHAPE_OPTIONS[shape],
+			icon: 'fa-gem',
+			click() {
+				// Add the shape directly with the last used settings, which can still be adjusted afterwards
+				add_mesh_dialog.show();
+				add_mesh_dialog.setFormValues({shape});
+				add_mesh_dialog.confirm();
+			}
+		}))),
 		click: function () {
 			add_mesh_dialog.show();
 		}
