@@ -3088,8 +3088,8 @@ Interface.definePanels(function() {
 				},
 				onMouseWheel(event) {
 					let is_zoom_gesture = event.ctrlKey && !Pressing.ctrl;
-					let is_paint_scroll_zoom = this.mode == 'paint' && settings.paint_scroll_zoom.value && !event.shiftKey;
-					if (is_zoom_gesture || (Keybinds.extra.uv_editor_scroll_zoom.keybind.isTriggered(event) || is_paint_scroll_zoom) && event.deltaY) {
+					let is_plain_scroll_zoom = settings.editor_2d_scroll_zoom.value && !event.shiftKey;
+					if (is_zoom_gesture || (Keybinds.extra.uv_editor_scroll_zoom.keybind.isTriggered(event) || is_plain_scroll_zoom) && event.deltaY) {
 				
 						event.stopPropagation()
 						event.preventDefault()

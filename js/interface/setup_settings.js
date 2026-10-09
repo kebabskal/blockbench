@@ -151,6 +151,7 @@ function setupSettings() {
 		Preview.all.forEach(viewport => viewport.controls.zoomSpeed = value / 100 * 1.5)
 	}});
 	new Setting('editor_2d_zoom_speed',		{category: 'controls', value: 100, min: 10, max: 1000, type: 'number'});
+	new Setting('editor_2d_scroll_zoom',		{category: 'controls', value: true});
 	new Setting('gamepad_controls',			{category: 'controls', value: false, name: 'Gamepad Controls', description: 'Use a gamepad or 3D mouse to navigate the viewport'});
 	new Setting('double_click_switch_tools',{category: 'controls', value: true});
 	new Setting('canvas_unselect',  		{category: 'controls', value: false});
@@ -201,7 +202,6 @@ function setupSettings() {
 	new Setting('outlines_in_paint_mode',			{category: 'paint', value: true, onChange() {
 		if (Modes.paint) updateSelection();
 	}});
-	new Setting('paint_scroll_zoom',				{category: 'paint', value: true});
 	new Setting('move_with_selection_tool',			{category: 'paint', value: true});
 	new Setting('pick_color_opacity',				{category: 'paint', value: false});
 	new Setting('pick_combined_color',				{category: 'paint', value: false});
