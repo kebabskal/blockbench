@@ -1514,6 +1514,8 @@
 	"action.blend_mode.alpha_mask": "Alpha Mask",
 	"action.expand_texture_selection": "Expand Texture Selection",
 	"action.expand_texture_selection.desc": "Expand or shrink the texture selection",
+	"action.select_face_pixels": "Select Face Pixels",
+	"action.select_face_pixels.desc": "Select the texture pixels covered by the selected faces, or by all faces of the selected elements",
 
 	"action.uv_slider_pos_x": "Move Horizontal",
 	"action.uv_slider_pos_x.desc": "Move all selected UV faces horizontally",

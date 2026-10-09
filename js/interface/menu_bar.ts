@@ -313,7 +313,8 @@ export const MenuBar = {
 			'select_all',
 			'unselect_all',
 			'invert_selection',
-			'expand_texture_selection'
+			'expand_texture_selection',
+			'select_face_pixels'
 		], {icon: 'edit'})
 		new BarMenu('transform', [
 			'scale',

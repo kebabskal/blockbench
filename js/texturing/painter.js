@@ -3583,6 +3583,58 @@ BARS.defineActions(function() {
 			expand_texture_selection_dialog.show();
 		}
 	})
+	new Action('select_face_pixels', {
+		icon: 'select',
+		category: 'paint',
+		condition: {modes: ['paint'], method: () => !!UVEditor.texture},
+		click() {
+			let texture = UVEditor.texture;
+			if (!texture) return;
+			let elements = UVEditor.getMappableElements();
+			// Use the selected faces, or all faces of the selected elements if no faces are selected
+			let use_face_selection = elements.some(el => UVEditor.getSelectedFaces(el).length);
+			let selection = texture.selection;
+
+			Undo.initSelection({texture_selection: true});
+			// Start from an empty custom selection, replacing any existing one
+			selection.clear();
+			selection.setOverride(null);
+			let select = (x, y) => {
+				if (x < 0 || y < 0 || x >= selection.width || y >= selection.height) return;
+				selection.set(x, y, 1);
+			}
+			for (let el of elements) {
+				let selected_faces = UVEditor.getSelectedFaces(el);
+				for (let fkey in el.faces) {
+					if (use_face_selection && !selected_faces.includes(fkey)) continue;
+					let face = el.faces[fkey];
+					if (face.getTexture() !== texture) continue;
+
+					if (el instanceof Mesh) {
+						if (face.vertices.length <= 2) continue;
+						let matrix = face.getOccupationMatrix(true, [0, 0]);
+						for (let x in matrix) {
+							for (let y in matrix[x]) {
+								if (matrix[x][y]) select(parseInt(x), parseInt(y));
+							}
+						}
+					} else if (el.getTypeBehavior('cube_faces')) {
+						let factor_x = texture.width  / texture.getUVWidth();
+						let factor_y = texture.display_height / texture.getUVHeight();
+						let rect = face.getBoundingRect();
+						for (let x = Math.floor(rect.ax * factor_x); x < Math.ceil(rect.bx * factor_x); x++) {
+							for (let y = Math.floor(rect.ay * factor_y); y < Math.ceil(rect.by * factor_y); y++) {
+								select(x, y);
+							}
+						}
+					}
+				}
+			}
+			if (!selection.hasSelection()) selection.setOverride(false);
+			UVEditor.updateSelectionOutline();
+			Undo.finishSelection('Select face pixels');
+		}
+	})
 
 	function highlightMirrorPaintingAxes() {
 		if (!Painter.mirror_painting) return;

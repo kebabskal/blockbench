@@ -1866,6 +1866,7 @@ export const UVEditor = {
 		'painting_grid',
 		'uv_checkerboard',
 		'paint_mode_uv_overlay',
+		'select_face_pixels',
 		new MenuSeparator('copypaste'),
 		'copy',
 		'paste',
