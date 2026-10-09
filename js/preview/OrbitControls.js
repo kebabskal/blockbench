@@ -650,6 +650,7 @@ constructor ( object, preview ) {
 			if ( event.pointerType === 'pen' ) {
 				document.addEventListener( 'pointermove', onMouseMove, false );
 				document.addEventListener( 'pointerup', onMouseUp, false );
+				document.addEventListener( 'pointercancel', onMouseUp, false );
 			} else {
 				document.addEventListener( 'mousemove', onMouseMove, false );
 				document.addEventListener( 'mouseup', onMouseUp, false );
@@ -696,6 +697,7 @@ constructor ( object, preview ) {
 		document.removeEventListener( 'mouseup', onMouseUp, false );
 		document.removeEventListener( 'pointermove', onMouseMove, false );
 		document.removeEventListener( 'pointerup', onMouseUp, false );
+		document.removeEventListener( 'pointercancel', onMouseUp, false );
 		pen_active = false;
 		scope.dispatchEvent( endEvent );
 		state = STATE.NONE;
@@ -733,9 +735,11 @@ constructor ( object, preview ) {
 
 	function onTouchStart( event ) {
 
-		if ( scope.isEnabled() === false || pen_pressed ) return;
+		if ( scope.isEnabled() === false ) return;
 
+		// Still prevent default for pen strokes, otherwise the browser starts gestures (long press) and cancels the pen
 		event.preventDefault();
+		if ( pen_pressed ) return;
 
 
 		switch ( event.touches.length ) {
@@ -778,7 +782,11 @@ constructor ( object, preview ) {
 
 	function onTouchMove( event ) {
 
-		if ( scope.isEnabled() === false || pen_pressed ) return;
+		if ( scope.isEnabled() === false ) return;
+		if ( pen_pressed ) {
+			event.preventDefault();
+			return;
+		}
 		if ( !PointerTarget.requestTarget(PointerTarget.types.navigate) ) return;
 
 		event.preventDefault();
