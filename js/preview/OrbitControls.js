@@ -591,8 +591,20 @@ constructor ( object, preview ) {
 	// event handlers - FSM: listen for events and reset state
 	//
 
+	// Pens (especially with Windows Ink) may not emit compatibility mouse events, so handle them as pointer events
+	let pen_active = false;
+	function onPointerDown( event ) {
+
+		if ( event.pointerType !== 'pen' ) return;
+		pen_active = true;
+		onMouseDown( event );
+		if ( state === STATE.NONE ) pen_active = false;
+
+	}
+
 	function onMouseDown( event ) {
 
+		if ( pen_active && event.pointerType !== 'pen' ) return;
 		if (scope.isEnabled() === false || !PointerTarget.requestTarget(PointerTarget.types.navigate)) return;
 
 		event.preventDefault();
@@ -629,8 +641,13 @@ constructor ( object, preview ) {
 
 		if ( state !== STATE.NONE ) {
 
-			document.addEventListener( 'mousemove', onMouseMove, false );
-			document.addEventListener( 'mouseup', onMouseUp, false );
+			if ( event.pointerType === 'pen' ) {
+				document.addEventListener( 'pointermove', onMouseMove, false );
+				document.addEventListener( 'pointerup', onMouseUp, false );
+			} else {
+				document.addEventListener( 'mousemove', onMouseMove, false );
+				document.addEventListener( 'mouseup', onMouseUp, false );
+			}
 			scope.dispatchEvent( startEvent );
 
 		}
@@ -671,6 +688,9 @@ constructor ( object, preview ) {
 
 		document.removeEventListener( 'mousemove', onMouseMove, false );
 		document.removeEventListener( 'mouseup', onMouseUp, false );
+		document.removeEventListener( 'pointermove', onMouseMove, false );
+		document.removeEventListener( 'pointerup', onMouseUp, false );
+		pen_active = false;
 		scope.dispatchEvent( endEvent );
 		state = STATE.NONE;
 
@@ -795,6 +815,7 @@ constructor ( object, preview ) {
 
 	}
 
+	scope.domElement.addEventListener( 'pointerdown', onPointerDown, false );
 	scope.domElement.addEventListener( 'mousedown', onMouseDown, false );
 	scope.domElement.addEventListener( 'wheel', onMouseWheel, false );
 	scope.domElement.addEventListener( 'touchstart', onTouchStart, false );
