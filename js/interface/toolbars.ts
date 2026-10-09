@@ -615,6 +615,7 @@ export const BARS = {
 				'color_erase_mode',
 				'lock_alpha',
 				'painting_grid',
+				'outlines_in_paint_mode',
 				'image_tiled_view',
 				'image_onion_skin_view',
 			]

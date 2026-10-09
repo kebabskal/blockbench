@@ -3675,6 +3675,12 @@ BARS.defineActions(function() {
 		keybind: new Keybind({key: 'g'}),
 		linked_setting: 'painting_grid'
 	})
+	new Toggle('outlines_in_paint_mode', {
+		icon: 'border_outer',
+		category: 'view',
+		condition: {modes: ['paint']},
+		linked_setting: 'outlines_in_paint_mode'
+	})
 	new Toggle('image_tiled_view', { 
 		category: 'paint',
 		icon: 'grid_view',

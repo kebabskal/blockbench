@@ -1673,6 +1673,10 @@ new NodePreviewController(Mesh, {
 			mesh.outline.material = Canvas.outlineUnselectedMaterial;
 		}
 		
+		if (Modes.paint && settings.outlines_in_paint_mode.value === false) {
+			mesh.outline.visible = false;
+		}
+		
 		mesh.vertex_points.visible = ((Mode.selected.id == 'edit' && BarItems.selection_mode.value == 'vertex') || Toolbox.selected.id == 'knife_tool') && element.selected;
 		if (Toolbox.selected.id == 'weight_brush') mesh.vertex_points.visible = true;
 
