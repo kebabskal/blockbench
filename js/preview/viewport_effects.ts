@@ -164,6 +164,12 @@ uniform float shadowWorldTexel;
 uniform float shadowRange;
 uniform float groundY;
 
+uniform bool OUTLINE_ON;
+uniform bool CREASES_ON;
+uniform float outlineWidth;
+uniform vec3 outlineColor;
+uniform float outlineOpacity;
+
 varying vec2 vUv;
 ${VIEW_POSITION_GLSL}
 
@@ -218,6 +224,39 @@ float shadowVisibility(vec3 world_position) {
 		lit += step(receiver, texture2D(tShadow, coords.xy + rotation * POISSON[i] * filter_radius).x);
 	}
 	return lit / 16.0;
+}
+
+/**
+ * Outlines: silhouettes are drawn where a neighboring pixel within the outline width is closer to the camera,
+ * so the line sits outside of the shape in front. Creases are drawn where the normals change sharply.
+ */
+float outlineAmount(float depth) {
+	float center_z = depth < 1.0 ? getViewPosition(vUv, depth).z : -1.0e9;
+	for (int i = 0; i < 16; i++) {
+		float angle = float(i) / 16.0 * 6.2831853;
+		vec2 direction = vec2(cos(angle), sin(angle));
+		for (int j = 1; j <= 2; j++) {
+			vec2 sample_uv = vUv + direction * outlineWidth * float(j) * 0.5 / resolution;
+			float sample_depth = texture2D(tDepth, sample_uv).x;
+			if (sample_depth >= 1.0) continue;
+			if (depth >= 1.0) return 1.0;
+			float sample_z = getViewPosition(sample_uv, sample_depth).z;
+			if (sample_z > center_z + 0.03 * abs(center_z) + 0.5) return 1.0;
+		}
+	}
+	if (CREASES_ON && depth < 1.0) {
+		vec3 normal = normalize(texture2D(tNormal, vUv).xyz * 2.0 - 1.0);
+		vec2 offsets[2];
+		offsets[0] = vec2(max(outlineWidth * 0.5, 1.0) / resolution.x, 0.0);
+		offsets[1] = vec2(0.0, max(outlineWidth * 0.5, 1.0) / resolution.y);
+		for (int i = 0; i < 2; i++) {
+			float sample_depth = texture2D(tDepth, vUv + offsets[i]).x;
+			if (sample_depth >= 1.0) continue;
+			vec3 sample_normal = normalize(texture2D(tNormal, vUv + offsets[i]).xyz * 2.0 - 1.0);
+			if (dot(normal, sample_normal) < 0.75) return 1.0;
+		}
+	}
+	return 0.0;
 }
 
 void main() {
@@ -282,6 +321,12 @@ void main() {
 	rgb *= 1.0 - shadow;
 	// Shadows also darken a transparent background, which the canvas is composited on
 	float alpha = 1.0 - (1.0 - color.a) * (1.0 - shadow);
+
+	if (OUTLINE_ON) {
+		float outline = outlineAmount(depth) * outlineOpacity;
+		rgb = mix(rgb, outlineColor, outline);
+		alpha = mix(alpha, 1.0, outline);
+	}
 	gl_FragColor = vec4(rgb, alpha);
 }`;
 
@@ -352,6 +397,11 @@ const composite_material = createPassMaterial(COMPOSITE_FRAGMENT, {
 	shadowWorldTexel: {value: 0.1},
 	shadowRange: {value: 1},
 	groundY: {value: 0},
+	OUTLINE_ON: {value: false},
+	CREASES_ON: {value: false},
+	outlineWidth: {value: 2},
+	outlineColor: {value: new THREE.Color()},
+	outlineOpacity: {value: 1},
 });
 
 // Materials used to render normals and depth, per original material, so texture transparency is respected
@@ -505,7 +555,7 @@ export const ViewportEffects = {
 		if (!Project || !Project.model_3d || Modes.paint) return false;
 		// The shaders use GLSL 3 features
 		if (!preview.renderer || !preview.renderer.capabilities.isWebGL2) return false;
-		return settings.preview_shadows.value != 'off' || !!settings.preview_ssao.value || !!settings.preview_cavity.value;
+		return settings.preview_shadows.value != 'off' || !!settings.preview_ssao.value || !!settings.preview_cavity.value || !!settings.preview_outline.value;
 	},
 	render(preview: Preview, renderScene: () => void, ground_y: number) {
 		let renderer = preview.renderer;
@@ -520,6 +570,7 @@ export const ViewportEffects = {
 		let ao_on = !!settings.preview_ssao.value;
 		let cavity_on = !!settings.preview_cavity.value;
 		let ground_on = shadows_on && !!settings.preview_ground_shadow.value;
+		let outline_on = !!settings.preview_outline.value;
 
 		let previous_target = renderer.getRenderTarget();
 		let previous_auto_clear = renderer.autoClear;
@@ -597,6 +648,17 @@ export const ViewportEffects = {
 				uniforms.shadowWorldTexel.value = (light_camera.right - light_camera.left) / SHADOW_MAP_SIZE;
 				uniforms.shadowRange.value = light_camera.far - light_camera.near;
 				uniforms.groundY.value = ground_y;
+			}
+			uniforms.OUTLINE_ON.value = outline_on;
+			if (outline_on) {
+				uniforms.CREASES_ON.value = !!settings.preview_outline_creases.value;
+				uniforms.outlineWidth.value = (settings.preview_outline_width.value as number) * window.devicePixelRatio;
+				uniforms.outlineOpacity.value = (settings.preview_outline_opacity.value as number) / 100;
+				try {
+					uniforms.outlineColor.value.set(settings.preview_outline_color.value as string || '#000000');
+				} catch (err) {
+					uniforms.outlineColor.value.set(0x000000);
+				}
 			}
 			renderer.autoClear = true;
 			renderQuad(renderer, composite_material, previous_target);

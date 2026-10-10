@@ -2142,6 +2142,7 @@ const EFFECT_SETTINGS = [
 	'preview_shadows', 'preview_shadow_strength', 'preview_shadow_softness', 'preview_light_direction', 'preview_light_height', 'preview_ground_shadow',
 	'preview_ssao', 'preview_ssao_radius', 'preview_ssao_strength',
 	'preview_cavity', 'preview_cavity_ridge', 'preview_cavity_valley',
+	'preview_outline', 'preview_outline_color', 'preview_outline_width', 'preview_outline_opacity', 'preview_outline_creases',
 ];
 function effectRange(id: string, min: number, max: number, step: number, condition: (result: PreviewOptionsFormResult) => boolean) {
 	return {label: 'settings.' + id, type: 'range', min, max, step, editable_range_label: true, full_width: true, condition};
@@ -2221,6 +2222,11 @@ export const ViewOptionsDialog = new ConfigDialog('preview_view_options', {
 		preview_cavity: {label: 'settings.preview_cavity', type: 'checkbox', style: 'toggle_switch'},
 		preview_cavity_ridge: effectRange('preview_cavity_ridge', 0, 200, 1, result => result.preview_cavity),
 		preview_cavity_valley: effectRange('preview_cavity_valley', 0, 200, 1, result => result.preview_cavity),
+		preview_outline: {label: 'settings.preview_outline', type: 'checkbox', style: 'toggle_switch'},
+		preview_outline_color: {label: 'settings.preview_outline_color', type: 'color', condition: result => result.preview_outline},
+		preview_outline_width: effectRange('preview_outline_width', 0.5, 10, 0.5, result => result.preview_outline),
+		preview_outline_opacity: effectRange('preview_outline_opacity', 0, 100, 1, result => result.preview_outline),
+		preview_outline_creases: {label: 'settings.preview_outline_creases', type: 'checkbox', style: 'toggle_switch', condition: result => result.preview_outline},
 	},
 	onOpen() {
 		let custom_color = StateMemory.get('viewport_background_color');
@@ -2291,8 +2297,10 @@ export const ViewOptionsDialog = new ConfigDialog('preview_view_options', {
 		}
 		let effects_changed = false;
 		for (let id of EFFECT_SETTINGS) {
-			if (result[id] !== undefined && settings[id].value != result[id]) {
-				settings[id].set(result[id]);
+			let value = result[id];
+			if (value && typeof value == 'object' && value.toHexString) value = value.toHexString();
+			if (value !== undefined && settings[id].value != value) {
+				settings[id].set(value);
 				effects_changed = true;
 			}
 		}

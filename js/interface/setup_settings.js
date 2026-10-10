@@ -159,6 +159,11 @@ function setupSettings() {
 	new Setting('preview_cavity',					{category: 'preview', value: false});
 	new Setting('preview_cavity_ridge',				{category: 'preview', value: 100, type: 'number', min: 0, max: 200});
 	new Setting('preview_cavity_valley',			{category: 'preview', value: 100, type: 'number', min: 0, max: 200});
+	new Setting('preview_outline',					{category: 'preview', value: false});
+	new Setting('preview_outline_color',			{category: 'preview', value: '#000000', type: 'text'});
+	new Setting('preview_outline_width',			{category: 'preview', value: 2, type: 'number', min: 0.5, max: 10, step: 0.5});
+	new Setting('preview_outline_opacity',			{category: 'preview', value: 100, type: 'number', min: 0, max: 100});
+	new Setting('preview_outline_creases',			{category: 'preview', value: true});
 	new Setting('display_skin',						{category: 'preview', value: false, type: 'click', icon: 'icon-player', click: function() { changeDisplaySkin() }});
 
 	new Setting('viewport_rotate_speed',	{category: 'controls', value: 100, min: 10, max: 1000, type: 'number', onChange(value) {
