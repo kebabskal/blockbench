@@ -153,7 +153,7 @@ export const Canvas = {
 		for (let color of markerColors) {
 			if (!color.prototype) continue;
 			let tone = color.prototype_tone ?? 0;
-			let lightness = tone > 0 ? Math.lerp(hsl.l, 1, 0.35 * tone) : hsl.l * (1 + 0.3 * tone);
+			let lightness = tone > 0 ? Math.lerp(hsl.l, 1, 0.25 * tone) : hsl.l * (1 + 0.55 * tone);
 			let shade = new THREE.Color().setHSL(hsl.h, hsl.s, lightness);
 			color.standard = '#' + shade.getHexString();
 			color.pastel = '#' + shade.clone().lerp(new THREE.Color(1, 1, 1), 0.15).getHexString();

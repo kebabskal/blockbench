@@ -33,7 +33,7 @@ vec3 hslToRgb(vec3 hsl) {
 // Same hue and saturation as the grid color, only lighter or darker
 vec3 prototypeShade(vec3 color, float tone) {
 	vec3 hsl = rgbToHsl(color);
-	hsl.z = tone > 0.0 ? mix(hsl.z, 1.0, 0.35 * tone) : hsl.z * (1.0 + 0.3 * tone);
+	hsl.z = tone > 0.0 ? mix(hsl.z, 1.0, 0.25 * tone) : hsl.z * (1.0 + 0.55 * tone);
 	return hslToRgb(hsl);
 }
 
