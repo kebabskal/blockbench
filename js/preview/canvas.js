@@ -147,6 +147,18 @@ export const Canvas = {
 		uniforms.PROTOTYPE.value = !!settings.preview_prototype.value;
 		uniforms.PROTOTYPE_COLOR.value.set(settings.preview_prototype_color.value);
 		uniforms.PROTOTYPE_SIZE.value = settings.preview_prototype_size.value;
+
+		// Match the marker color swatches of the prototype colors to their shade of the grid color, like prototypeShade() in the shader
+		let hsl = uniforms.PROTOTYPE_COLOR.value.getHSL({});
+		for (let color of markerColors) {
+			if (!color.prototype) continue;
+			let tone = color.prototype_tone ?? 0;
+			let lightness = tone > 0 ? Math.lerp(hsl.l, 1, 0.35 * tone) : hsl.l * (1 + 0.3 * tone);
+			let shade = new THREE.Color().setHSL(hsl.h, hsl.s, lightness);
+			color.standard = '#' + shade.getHexString();
+			color.pastel = '#' + shade.clone().lerp(new THREE.Color(1, 1, 1), 0.15).getHexString();
+		}
+		if (typeof Outliner != 'undefined' && Outliner.vue) Outliner.vue.$forceUpdate();
 	},
 	getEmptyMaterial(index) {
 		return Canvas.emptyMaterials[index % Canvas.emptyMaterials.length];
