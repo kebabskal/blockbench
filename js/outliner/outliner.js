@@ -1205,7 +1205,7 @@ BARS.defineActions(function() {
 		icon: 'fa-glasses',
 		category: 'view',
 		keybind: new Keybind({key: 'i'}),
-		condition: {modes: ['edit', 'paint']},
+		condition: {modes: ['edit', 'paint', 'animate']},
 		click() {
 			if (PointerTarget.hasMinPriority(2)) return;
 			let enabled = !Project.only_hidden_elements;
@@ -1447,6 +1447,8 @@ Interface.definePanels(function() {
 					let affected = [];
 					let key = e1.target.getAttribute('toggle');
 					let previous_values = {};
+					let new_values = {};
+					let soloing = false;
 					let value = original[key];
 					let toggle_config = Outliner.buttons[key];
 					value = (typeof value == 'number') ? (value+1) % 3 : !value;
@@ -1458,17 +1460,36 @@ Interface.definePanels(function() {
 						convertTouchEvent(e2);
 						if (e2.target.classList.contains('outliner_toggle') && e2.target.getAttribute('toggle') == key) {
 							let [node] = eventTargetToNode(e2.target);
+							if (soloing) return;
 							if (key == 'visibility' && (e2.altKey || Pressing.overrides.alt) && !affected.length) {
-								let new_affected = Outliner.elements.filter(node => !node.selected);
-								value = !(new_affected[0] && new_affected[0][key]);
-								new_affected.forEach(node => {
-									affected.push(node);
-									previous_values[node.uuid] = node[key];
-									node[key] = value;
-								})
-								// Update
-								Canvas.updateView({elements: affected, element_aspects: {visibility: true}});
-								
+								// Solo: show only this node and its children. Alt-clicking it again restores the previous visibility
+								soloing = true;
+								let solo = Project.visibility_solo;
+								let nodes = [...Outliner.elements, ...Group.all].filter(n => typeof n.visibility == 'boolean');
+								let setVisibility = (n, visible) => {
+									affected.push(n);
+									previous_values[n.uuid] = n.visibility;
+									new_values[n.uuid] = visible;
+									n.visibility = visible;
+								}
+								if (solo && solo.uuid == node.uuid) {
+									nodes.forEach(n => {
+										if (n.uuid in solo.original) setVisibility(n, solo.original[n.uuid]);
+									})
+									delete Project.visibility_solo;
+								} else {
+									let shown = new Set([node.uuid]);
+									if (node.forEachChild) node.forEachChild(child => shown.add(child.uuid));
+									for (let parent = node.parent; parent instanceof OutlinerNode; parent = parent.parent) {
+										shown.add(parent.uuid);
+									}
+									// When switching the solo to another node, keep the visibility from before the first solo
+									let original = solo ? solo.original : Object.fromEntries(nodes.map(n => [n.uuid, n.visibility]));
+									nodes.forEach(n => setVisibility(n, shown.has(n.uuid)));
+									Project.visibility_solo = {uuid: node.uuid, original};
+								}
+								Canvas.updateView({elements: affected.filter(n => n instanceof OutlinerElement), element_aspects: {visibility: true}});
+
 							} else if (!affected.includes(node) && (!node.locked || key == 'locked' || key == 'visibility')) {
 								let new_affected = [node];
 								if (node.forEachChild) {
@@ -1507,7 +1528,7 @@ Interface.definePanels(function() {
 								mirror_modeling: false
 							})
 							affected.forEach(node => {
-								node[key] = value;
+								node[key] = (node.uuid in new_values) ? new_values[node.uuid] : value;
 								if (key == 'shade') node.updateElement();
 							})
 							Undo.finishEdit(`Toggle ${key} property`)
