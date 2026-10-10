@@ -2818,6 +2818,11 @@
 	"null_object.ik_target": "IK Target",
 	"null_object.ik_source": "IK Root",
 	"null_object.ik_pole": "IK Pole",
+	"null_object.ik_pole_angle": "IK Pole Angle",
+	"null_object.ik_pole_angle.desc": "Rotate the plane the chain bends in around the line from the IK root to the target, in degrees",
+	"null_object.ik_hinge_axis": "IK Hinge Axis",
+	"null_object.ik_hinge_axis.desc": "Local axis of the IK root bone that the chain bends around. Auto uses the bend of the default pose",
+	"null_object.ik_hinge_axis.auto": "Auto",
 
 	"texture_mesh.texture_name": "Texture Name",
 

@@ -1,6 +1,6 @@
 import Wintersky from 'wintersky';
 import { THREE } from '../lib/libs';
-import { fabrikIter } from './fabrik';
+import { fabrikIter, getBendNormal, getBoneFrame, getPoleNormal, rotateChainAroundAxis } from './fabrik';
 
 export class GeneralAnimator {
 	constructor(uuid, animation) {
@@ -864,7 +864,6 @@ export class NullObjectAnimator extends BoneAnimator {
 
 		let bones = [];
 		let ik_target = null_object.getWorldCenter(true).clone();
-		let bone_references = [];
 		let current = target;
 
 		let source;
@@ -895,22 +894,13 @@ export class NullObjectAnimator extends BoneAnimator {
 		});
 
 		let bone_pos = [];
-		bones.forEach((bone, i) => {
-			let scene_object = bone.scene_object; 
-			let pos = scene_object.getWorldPosition(new THREE.Vector3());
-
-			bone_pos.push(pos);
-
-			if (i != bones.length - 1) {
-				let last_diff = bones[i + 1].mesh.getWorldPosition(new THREE.Vector3());
-				scene_object.parent.worldToLocal(last_diff).sub(scene_object.position).normalize();
-
-				bone_references.push({
-					bone,
-					last_diff,
-				});
-			}
+		let rest_quaternions = [];
+		bones.forEach(bone => {
+			let scene_object = bone.scene_object;
+			bone_pos.push(scene_object.getWorldPosition(new THREE.Vector3()));
+			rest_quaternions.push(scene_object.getWorldQuaternion(new THREE.Quaternion()));
 		});
+		let rest_pos = bone_pos.map(pos => pos.clone());
 
 		let pole_pos;
 		if (pole) {
@@ -921,29 +911,75 @@ export class NullObjectAnimator extends BoneAnimator {
 		}
 
 		fabrikIter(bone_pos, ik_target, pole_pos);
+		let pole_angle = Math.degToRad(null_object.ik_pole_angle || 0);
+		rotateChainAroundAxis(bone_pos, pole_angle);
+
+		// Hinge normals before and after solving. Every bone gets rotated so that the old normal maps onto the new one,
+		// which keeps the twist consistent along the chain instead of picking the shortest rotation per bone
+		let n = bones.length;
+		let rest_line = rest_pos[n - 1].clone().sub(rest_pos[0]).normalize();
+		let solved_line = bone_pos[n - 1].clone().sub(bone_pos[0]).normalize();
+		let rest_bend = getBendNormal(rest_pos);
+
+		let rest_normal = null;
+		if (null_object.ik_hinge_axis && null_object.ik_hinge_axis != 'auto') {
+			let axis = {x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1]}[null_object.ik_hinge_axis];
+			rest_normal = new THREE.Vector3().fromArray(axis).applyQuaternion(rest_quaternions[0]);
+			rest_normal.sub(rest_line.clone().multiplyScalar(rest_normal.dot(rest_line)));
+			if (rest_normal.lengthSq() < 1e-6) {
+				rest_normal = null;
+			} else {
+				rest_normal.normalize();
+				// The axis only picks the hinge, the bend in the default pose decides which way it faces
+				if (rest_bend && rest_normal.dot(rest_bend) < 0) rest_normal.negate();
+			}
+		}
+		if (!rest_normal) rest_normal = rest_bend;
+		if (!rest_normal && pole_pos) rest_normal = getPoleNormal(rest_pos[0], rest_pos[n - 1], pole_pos);
+
+		let solved_normal = getBendNormal(bone_pos);
+		if (!solved_normal && pole_pos) {
+			// Chain is stretched straight, keep facing the pole
+			solved_normal = getPoleNormal(bone_pos[0], bone_pos[n - 1], pole_pos);
+			if (solved_normal) solved_normal.applyAxisAngle(solved_line, pole_angle);
+		}
+
+		let swing = new THREE.Quaternion().setFromUnitVectors(rest_line, solved_line);
+		if (!rest_normal && solved_normal) rest_normal = solved_normal.clone().applyQuaternion(swing.clone().invert());
+		if (rest_normal && !solved_normal) solved_normal = rest_normal.clone().applyQuaternion(swing);
 
 		let results = {};
-		for (let i = 0; i < bone_references.length; i++) {
-			let bone_ref = bone_references[i];
-			let scene_object = bone_ref.bone.scene_object; 
+		let rest_frame = new THREE.Quaternion();
+		let solved_frame = new THREE.Quaternion();
+		for (let i = 0; i < n - 1; i++) {
+			let bone = bones[i];
+			let scene_object = bone.scene_object;
 
-			let end = bone_pos[i + 1];
-			scene_object.parent
-				.worldToLocal(end)
-				.sub(scene_object.position)
-				.normalize();
+			let rest_dir = rest_pos[i + 1].clone().sub(rest_pos[i]).normalize();
+			let solved_dir = bone_pos[i + 1].clone().sub(bone_pos[i]).normalize();
 
-			Reusable.quat1.setFromUnitVectors(
-				bone_ref.last_diff,
-				end,
-			);
+			let delta = new THREE.Quaternion();
+			if (rest_dir.lengthSq() && solved_dir.lengthSq()) {
+				if (rest_normal && solved_normal &&
+					getBoneFrame(rest_dir, rest_normal, rest_frame) &&
+					getBoneFrame(solved_dir, solved_normal, solved_frame)
+				) {
+					delta.copy(solved_frame).multiply(rest_frame.invert());
+				} else {
+					delta.setFromUnitVectors(rest_dir, solved_dir);
+				}
+			}
 
-			scene_object.applyQuaternion(Reusable.quat1);
+			let world_quaternion = delta.multiply(rest_quaternions[i]);
+			let parent_quaternion = scene_object.parent.getWorldQuaternion(new THREE.Quaternion());
+			let old_local = scene_object.quaternion.clone();
+			scene_object.quaternion.copy(parent_quaternion.invert().multiply(world_quaternion));
 			scene_object.updateMatrixWorld();
 
 			if (get_samples) {
-				let rotation = new THREE.Euler().setFromQuaternion(Reusable.quat1, Format.euler_order);
-				results[bone_ref.bone.uuid] = {
+				let local_delta = scene_object.quaternion.clone().multiply(old_local.invert());
+				let rotation = new THREE.Euler().setFromQuaternion(local_delta, Format.euler_order);
+				results[bone.uuid] = {
 					euler: rotation,
 					array: [
 						Math.radToDeg(rotation.x),

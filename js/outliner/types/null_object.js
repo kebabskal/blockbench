@@ -204,6 +204,35 @@ export class NullObject extends OutlinerElement {
 			}
 		}
 	})
+	new Property(NullObject, 'number', 'ik_pole_angle', {
+		condition: () => Format.animation_mode,
+		inputs: {
+			element_panel: {
+				input: {label: 'null_object.ik_pole_angle', description: 'null_object.ik_pole_angle.desc', type: 'number', step: 5},
+				onChange() {
+					if (Modes.animate) Animator.preview();
+				}
+			}
+		}
+	});
+	new Property(NullObject, 'enum', 'ik_hinge_axis', {
+		default: 'auto',
+		values: ['auto', 'x', 'y', 'z'],
+		condition: () => Format.animation_mode,
+		inputs: {
+			element_panel: {
+				input: {label: 'null_object.ik_hinge_axis', description: 'null_object.ik_hinge_axis.desc', type: 'select', options: {
+					auto: 'null_object.ik_hinge_axis.auto',
+					x: 'X',
+					y: 'Y',
+					z: 'Z',
+				}},
+				onChange() {
+					if (Modes.animate) Animator.preview();
+				}
+			}
+		}
+	});
 	new Property(NullObject, 'boolean', 'visibility', {default: true});
 	new Property(NullObject, 'boolean', 'locked');
 	
