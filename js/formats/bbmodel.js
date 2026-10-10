@@ -235,6 +235,12 @@ var codec = new Codec('project', {
 				mesh_selection: JSON.parse(JSON.stringify(Project.mesh_selection)),
 				selected_texture: Project.selected_texture?.uuid,
 			};
+		} else if (Project) {
+			// Store the camera in the file, so the project opens with the same view
+			Project.saveEditorState();
+			model.view = {
+				previews: JSON.parse(JSON.stringify(Project.previews))
+			};
 		}
 
 		if (!(Format.id == 'skin' && model.skin_model)) {
@@ -627,6 +633,12 @@ var codec = new Codec('project', {
 			(state.selected_texture && Texture.all.find(t => t.uuid == state.selected_texture))?.select();
 
 			Project.loadEditorState();
+
+		} else if (model.view?.previews && Project) {
+			for (let id in model.view.previews) {
+				Project.previews[id] = model.view.previews[id];
+			}
+			Project.loadPreviewStates();
 		}
 	},
 	merge(model, path) {

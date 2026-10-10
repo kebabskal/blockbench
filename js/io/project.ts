@@ -303,6 +303,25 @@ export class ModelProject {
 		Blockbench.dispatchEvent('save_editor_state', {project: this});
 		return this;
 	}
+	/**
+	 * Apply the stored camera of each preview
+	 */
+	loadPreviewStates(): this {
+		if (!settings.save_view_per_tab.value) return this;
+		Preview.all.forEach(preview => {
+			let data = this.previews[preview.id];
+			if (data) {
+				preview.camera.position.fromArray(data.position);
+				preview.controls.target.fromArray(data.target);
+				preview.setProjectionMode(data.orthographic);
+				if (data.zoom) preview.camOrtho.zoom = data.zoom;
+				if (data.angle) preview.setLockedAngle(data.angle);
+			} else if (preview.default_angle !== undefined) {
+				preview.loadAnglePreset(preview.default_angle);
+			}
+		})
+		return this;
+	}
 	loadEditorState(): this {
 		Blockbench.Project = this;
 		this.selected = true;
@@ -349,20 +368,7 @@ export class ModelProject {
 
 		UVEditor.loadViewportOffset();
 
-		if (settings.save_view_per_tab.value) {
-			Preview.all.forEach(preview => {
-				let data = this.previews[preview.id];
-				if (data) {
-					preview.camera.position.fromArray(data.position);
-					preview.controls.target.fromArray(data.target);
-					preview.setProjectionMode(data.orthographic);
-					if (data.zoom) preview.camOrtho.zoom = data.zoom;
-					if (data.angle) preview.setLockedAngle(data.angle);
-				} else if (preview.default_angle !== undefined) {
-					preview.loadAnglePreset(preview.default_angle);
-				}
-			})
-		}
+		this.loadPreviewStates();
 
 		Modes.options[this.mode].select();
 		let tool = BarItems[this.tool];
