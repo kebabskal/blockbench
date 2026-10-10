@@ -1279,6 +1279,11 @@ import { TransformerModule } from "./transform_modules";
 
 				_gizmo[ _mode ].highlight( getHighlightAxis() );
 			}
+			function isUniformScaleTarget( pointer ) {
+				if ( Toolbox.selected.id !== 'resize_tool' || !Modes.edit || !scope.camera || !scope.camera.preview ) return false;
+				let data = scope.camera.preview.raycast( pointer );
+				return !!( data && data.element && data.element.selected );
+			}
 			function getHighlightAxis() {
 				return scope.plane_axes ? scope.plane_axes.map(axis => axis.toUpperCase()) : scope.axis;
 			}
@@ -1301,6 +1306,9 @@ import { TransformerModule } from "./transform_modules";
 					SplineGizmos.tryHighlight(scope.hoverAxis);
 
 					event.preventDefault();
+				} else if ( pointer === event && isUniformScaleTarget( pointer ) ) {
+					// Hovering the selection with the resize tool: dragging it scales uniformly, like the center handle
+					scope.hoverAxis = 'E';
 				}
 				if ( scope.axis !== scope.hoverAxis ) {
 					scope.axis = scope.hoverAxis;
@@ -1317,7 +1325,8 @@ import { TransformerModule } from "./transform_modules";
 				if ( pointer.button === 0 || pointer.button === undefined ) {
 
 					var intersect = intersectObjects( pointer, _gizmo[ _mode ].pickers.children ) || SplineGizmos.interesct(pointer, intersectObjects);
-					if ( intersect ) {
+					let uniform_scale = !intersect && pointer === event && scope.hoverAxis === 'E' && isUniformScaleTarget( pointer );
+					if ( intersect || uniform_scale ) {
 						scope.was_clicked = true;
 						if ( scope.axis == "C1" || scope.axis == "C2" || scope.axis == "J" ) {
 							// Spline Gizmos cannot and should not trigger draggin states.
@@ -1349,6 +1358,31 @@ import { TransformerModule } from "./transform_modules";
 						event.preventDefault();
 						event.stopPropagation();
 						scope.dispatchEvent( mouseDownEvent );
+
+						if ( uniform_scale ) {
+							// Scale by how much further from the center the cursor is than where the drag started,
+							// so the grabbed point stays under the cursor
+							let screen_center = worldPosition.clone().project( scope.camera );
+							let rect = scope.canvas.getBoundingClientRect();
+							let center = [
+								rect.left + ( screen_center.x + 1 ) / 2 * rect.width,
+								rect.top + ( 1 - screen_center.y ) / 2 * rect.height
+							];
+							scope.uniform_scale = {
+								center,
+								start_distance: Math.max( Math.hypot( pointer.clientX - center[0], pointer.clientY - center[1] ), 4 ),
+								down_event: event,
+							};
+							scope.axis = 'E';
+							scope.direction = true;
+							scope.update();
+							if (TransformerModule.active) {
+								TransformerModule.active.dispatchPointerDown({event});
+							}
+							Canvas.outlineObjects(Outliner.selected);
+							_dragging = true;
+							return;
+						}
 
 						scope.axis = intersect.object.name;
 						// Shift-grabbing a move arrow moves on the plane perpendicular to that arrow
@@ -1389,12 +1423,31 @@ import { TransformerModule } from "./transform_modules";
 				if ( !scope.visible || scope.axis === null || _dragging === false || ( event.button !== undefined && event.button !== 0 ) ) return;
 
 				var pointer = event.changedTouches ? event.changedTouches[ 0 ] : event;
+				let module = TransformerModule.active;
+
+				if ( scope.uniform_scale ) {
+					event.stopPropagation();
+					let {center, start_distance} = scope.uniform_scale;
+					let distance = Math.hypot( pointer.clientX - center[0], pointer.clientY - center[1] );
+					if ( module ) {
+						module.dispatchMove({
+							event,
+							point,
+							axis: 'e',
+							direction: 1,
+							uniform_factor: distance / start_distance
+						});
+					}
+					scope.dispatchEvent( changeEvent );
+					scope.dispatchEvent( objectChangeEvent );
+					return;
+				}
+
 				var planeIntersect = intersectObjects( pointer, [ _gizmo[ _mode ].activePlane ] );
 				if (!planeIntersect) return;
 
 				event.stopPropagation();
 
-				let module = TransformerModule.active;
 				var axis = ((scope.direction == false && scope.axis.length == 2) ? scope.axis[1] : scope.axis[0]).toLowerCase();
 				var axisNumber = getAxisNumber(axis)
 				var rotate_normal;
@@ -1494,6 +1547,11 @@ import { TransformerModule } from "./transform_modules";
 
 				if ( event.button !== undefined && event.button !== 0 && event.button !== 2 ) return;
 
+				// A click on the selection with the resize tool that didn't scale anything is a regular selection click
+				let uniform_scale = scope.uniform_scale;
+				scope.uniform_scale = null;
+				let replay_click = uniform_scale && keep_changes && !TransformerModule.active?.has_changed;
+
 				if ( _dragging && scope.axis !== null ) {
 
 					mouseUpEvent.mode = _mode;
@@ -1524,6 +1582,12 @@ import { TransformerModule } from "./transform_modules";
 				}
 				_dragging = false;
 				scope.plane_axes = null;
+
+				if ( replay_click && scope.camera.preview ) {
+					scope.axis = scope.hoverAxis = null;
+					scope.was_clicked = false;
+					scope.camera.preview.click( uniform_scale.down_event );
+				}
 
 				if (isTouchEvent(event)) {
 					// Force "rollover"

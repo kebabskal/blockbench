@@ -5,6 +5,32 @@ function displayDistance(number) {
 	Blockbench.setCursorTooltip(trimFloatNumber(number));
 }
 
+/**
+ * Size of an element along an axis at the start of a resize, as used by its resize method
+ */
+function getUniformResizeSize(obj, axis_number) {
+	// Before the first change, the start values aren't stored yet, so use the current ones
+	let vertices = obj.temp_data.oldVertices || ((obj instanceof Mesh || obj instanceof SplineMesh) && obj.vertices);
+	if (vertices) {
+		let selected_vertices = Project.mesh_selection[obj.uuid]?.vertices;
+		if (!selected_vertices?.length) selected_vertices = Object.keys(vertices);
+		let rotation_inverted = new THREE.Euler().copy(Transformer.rotation_selection).invert();
+		let vec = new THREE.Vector3();
+		let range = [Infinity, -Infinity];
+		for (let vkey of selected_vertices) {
+			if (!vertices[vkey]) continue;
+			vec.fromArray(vertices[vkey]).applyEuler(rotation_inverted);
+			range[0] = Math.min(range[0], vec.getComponent(axis_number));
+			range[1] = Math.max(range[1], vec.getComponent(axis_number));
+		}
+		return range[1] > range[0] ? range[1] - range[0] : 0;
+	}
+	let size = obj.temp_data.old_size;
+	if (size == undefined) size = typeof obj.size == 'function' ? obj.size(axis_number) : obj.size;
+	if (size instanceof Array) size = size[axis_number];
+	return Math.abs(size || 0);
+}
+
 export function getEditTransformSpace() {
 	if (!Outliner.selected.length && (!Group.first_selected || !Format.bone_rig)) return;
 
@@ -199,6 +225,20 @@ new TransformerModule('edit', {
 			var snap_factor = canvasGridSize(event.shiftKey || Pressing.overrides.shift, event.ctrlOrCmd || Pressing.overrides.ctrl)
 			return Math.round( point[axis] / snap_factor ) * snap_factor;
 			
+		} else if (tool_id === 'resize_tool' && context.uniform_factor !== undefined) {
+			// Uniform scale by dragging the selection: snap the size change of the largest side to the grid
+			var snap_factor = canvasGridSize(event.shiftKey || Pressing.overrides.shift, event.ctrlOrCmd || Pressing.overrides.ctrl)
+			let largest_size = 0;
+			Outliner.selected.forEach(obj => {
+				if (!obj.getTypeBehavior('resizable')) return;
+				for (let axis_number = 0; axis_number < 3; axis_number++) {
+					largest_size = Math.max(largest_size, getUniformResizeSize(obj, axis_number));
+				}
+			})
+			if (!largest_size) return 1;
+			let size_change = Math.round(largest_size * (context.uniform_factor - 1) / snap_factor) * snap_factor;
+			return Math.max(1 + size_change / largest_size, 0);
+
 		} else if (tool_id === 'resize_tool') {
 			if (second_axis) {
 				if (axis == 'y') {axis = 'z';} else
@@ -308,6 +348,19 @@ new TransformerModule('edit', {
 
 				updateSelection()
 			}
+
+		} else if (tool_id === 'resize_tool' && context.uniform_factor !== undefined) {
+
+			// Scale every side by the same factor around the element's center
+			Outliner.selected.forEach(obj => {
+				if (!obj.getTypeBehavior('resizable') || typeof obj.resize != 'function') return;
+				for (let axis_number = 0; axis_number < 3; axis_number++) {
+					let size = getUniformResizeSize(obj, axis_number);
+					obj.resize(size * (value - 1) / 2, axis_number, false, null, true);
+				}
+			})
+			Blockbench.setCursorTooltip('×' + trimFloatNumber(value, 3));
+			updateSelection()
 
 		} else if (tool_id === 'resize_tool') {
 
