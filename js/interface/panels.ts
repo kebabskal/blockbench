@@ -612,6 +612,13 @@ export class Panel extends EventSystem {
 		return Panels[this.attached_to];
 	}
 	/**
+	 * Whether the panel is currently shown as a tab of its host panel. While the host panel is hidden, for example in a mode it doesn't support, the attached panel is shown on its own
+	 */
+	isInHostPanel(): boolean {
+		let host = this.getHostPanel();
+		return !!host && Condition(host.condition);
+	}
+	/**
 	 * Get the panel that acts as the container for this panel. If the panel is not attached to another panel, returns itself
 	 */
 	getContainerPanel(): Panel {
@@ -951,7 +958,7 @@ export class Panel extends EventSystem {
 		let show = BARS.condition(this.condition);
 		if (!Blockbench.isMobile) {
 			// Hide panel if its in host panel
-			if (this.getHostPanel() && Condition(this.getHostPanel().condition)) show = false;
+			if (this.isInHostPanel()) show = false;
 		}
 		let {work_screen, center_screen} = Interface;
 		let slot = this.slot;
@@ -1048,7 +1055,7 @@ export class Panel extends EventSystem {
 			this.container.classList.add('hidden');
 		}
 
-		if (show && !this.attached_to && !Blockbench.isMobile) {
+		if (show && !this.isInHostPanel() && !Blockbench.isMobile) {
 			// This is a host panel. Update the tabs and attached panels
 			if (this.open_attached_panel && this.getAttachedPanels().includes(this.open_attached_panel) == false) {
 				this.open_attached_panel = this;
@@ -1325,7 +1332,7 @@ export function updateSidebarOrder() {
 	['left_bar', 'right_bar'].forEach(bar => {
 		let bar_node = document.querySelector(`.sidebar#${bar}`);
 		let current_panels = Array.from(bar_node.childNodes).map(panel_node => (panel_node as HTMLElement).getAttribute('panel_id')).filter(panel_id => {
-			return Panels[panel_id] && Condition(Panels[panel_id].condition) && !Panels[panel_id].attached_to;
+			return Panels[panel_id] && Condition(Panels[panel_id].condition) && !Panels[panel_id].isInHostPanel();
 		});
 
 		let target_order = Interface.calculateSidebarOrder(bar) as string[];
@@ -1335,7 +1342,7 @@ export function updateSidebarOrder() {
 			let panel: Panel = Panels[panel_id];
 			panel.container.classList.remove('bottommost_panel');
 			panel.container.classList.remove('topmost_panel');
-			if (!panel.attached_to && Condition(panel.condition)) {
+			if (!panel.isInHostPanel() && Condition(panel.condition)) {
 				if (current_panels[panel_count] != panel_id) {
 					if (panel.id == 'uv' && !Blockbench.isMobile) UVEditor.saveViewportOffset()
 					bar_node.append(panel.container);

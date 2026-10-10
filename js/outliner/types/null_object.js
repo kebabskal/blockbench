@@ -121,6 +121,7 @@ export class NullObject extends OutlinerElement {
 		condition: () => Format.animation_mode,
 		inputs: {
 			element_panel: {
+				animate_mode: true,
 				input: {label: 'null_object.ik_target', description: 'action.set_ik_target.desc', type: 'outliner_node', getOutlinerNodes() {
 					let nodes = [];
 					if (NullObject.hasSelected()) iterate(NullObject.selected[0].getParentArray(), 0);
@@ -146,6 +147,7 @@ export class NullObject extends OutlinerElement {
 		condition: () => Format.animation_mode,
 		inputs: {
 			element_panel: {
+				animate_mode: true,
 				input: {label: 'null_object.ik_source', description: 'action.set_ik_source.desc', type: 'outliner_node', getOutlinerNodes() {
 					let nodes = [];
 					iterate(Outliner.root)
@@ -171,6 +173,7 @@ export class NullObject extends OutlinerElement {
 		condition: () => Format.animation_mode,
 		inputs: {
 			element_panel: {
+				animate_mode: true,
 				input: {label: 'null_object.ik_pole', description: 'action.set_ik_pole.desc', type: 'outliner_node', getOutlinerNodes() {
 					let nodes = [];
 					if (NullObject.hasSelected()) iterate(NullObject.selected[0].getParentArray(), 0);
@@ -197,6 +200,7 @@ export class NullObject extends OutlinerElement {
 		condition: () => Format.animation_mode,
 		inputs: {
 			element_panel: {
+				animate_mode: true,
 				input: {label: 'menu.null_object.lock_ik_target_rotation', type: 'checkbox'},
 				onChange() {
 					if (Modes.animate) Animator.preview();
@@ -208,6 +212,7 @@ export class NullObject extends OutlinerElement {
 		condition: () => Format.animation_mode,
 		inputs: {
 			element_panel: {
+				animate_mode: true,
 				input: {label: 'null_object.ik_pole_angle', description: 'null_object.ik_pole_angle.desc', type: 'number', step: 5},
 				onChange() {
 					if (Modes.animate) Animator.preview();
@@ -221,6 +226,7 @@ export class NullObject extends OutlinerElement {
 		condition: () => Format.animation_mode,
 		inputs: {
 			element_panel: {
+				animate_mode: true,
 				input: {label: 'null_object.ik_hinge_axis', description: 'null_object.ik_hinge_axis.desc', type: 'select', options: {
 					auto: 'null_object.ik_hinge_axis.auto',
 					x: 'X',

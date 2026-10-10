@@ -24,6 +24,8 @@ interface PropertyOptions {
 		[key: 'element_panel' | 'dialog' | string]: {
 			input: FormElementOptions,
 			shared?: boolean
+			/** Also show this input in the element panel in animate mode */
+			animate_mode?: boolean
 			onChange?: (value: any, nodes: OutlinerNode[]) => void
 		}
 	}

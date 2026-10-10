@@ -61,7 +61,7 @@ export const Interface = {
 			let panel = Interface.Panels[panel_id];
 			if (panel.slot != bar) continue;
 			if (!Condition(panel)) continue;
-			if (panel.attached_to) continue;
+			if (panel.isInHostPanel()) continue;
 			target_order.push(panel.id);
 		}
 		if (in_order) {

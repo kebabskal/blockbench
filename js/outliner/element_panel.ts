@@ -28,10 +28,18 @@ Interface.definePanels(function() {
 			Toolbars.element_rotation,
 		],
 	})
+	function hasAnimateModeInputs(element: OutlinerElement): boolean {
+		// @ts-expect-error
+		let properties: Record<string, Property<any>> = element.constructor.properties ?? {};
+		return Object.values(properties).some(property => property.inputs?.element_panel?.animate_mode && Condition(property.condition));
+	}
 	let element_properties_panel = new Panel('element', {
 		icon: 'fas.fa-cube',
-		condition: {modes: ['edit']},
-		display_condition: () => !!(Outliner.selected.length || Group.first_selected),
+		condition: {modes: ['edit', 'animate']},
+		display_condition: () => {
+			if (Modes.animate) return Outliner.selected.some(element => hasAnimateModeInputs(element));
+			return !!(Outliner.selected.length || Group.first_selected);
+		},
 		default_position: {
 			slot: 'right_bar',
 			float_position: [0, 0],
@@ -55,7 +63,7 @@ Interface.definePanels(function() {
 			let input_id = type_id + '__' + prop_id;
 			input.condition = {
 				selected: {[type_id]: true},
-				method: () => Condition(property.condition),
+				method: () => Condition(property.condition) && (!Modes.animate || !!property.inputs.element_panel.animate_mode),
 			};
 			if (onChange) onchanges[input_id] = onChange;
 			form_config[input_id] = input;
