@@ -9,10 +9,14 @@ uniform vec3 base;
 varying float light;
 varying float lift;
 
+#include "./prototype.glsl"
+
 void main(void)
 {
 
-	gl_FragColor = vec4(lift + base * light * BRIGHTNESS, 1.0);
+	vec3 color = PROTOTYPE ? prototypeColor() : base;
+
+	gl_FragColor = vec4(lift + color * light * BRIGHTNESS, 1.0);
 
 	if (lift > 0.1) {
 		gl_FragColor.b = gl_FragColor.b * 1.16;

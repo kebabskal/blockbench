@@ -5,6 +5,8 @@ uniform bool SHADE;
 varying vec2 vUv;
 varying float light;
 varying float lift;
+varying vec3 vWorldPos;
+varying vec3 vWorldNormal;
 
 float AMBIENT = 0.5;
 float XFAC = -0.15;
@@ -35,6 +37,8 @@ void main()
 	}
 	
 	vUv = uv;
+	vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+	vWorldNormal = normalize(vec3(modelMatrix * vec4(normal, 0.0)));
 	vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
 	gl_Position = projectionMatrix * mvPosition;
 }

@@ -12,11 +12,13 @@ varying vec2 vUv;
 varying float light;
 varying float lift;
 
+#include "./prototype.glsl"
+
 void main(void)
 {
-	vec4 color = texture2D(map, vUv);
+	vec3 color = PROTOTYPE ? prototypeColor() : texture2D(map, vUv).rgb * base;
 
-	gl_FragColor = vec4(lift + color.rgb * base * light * BRIGHTNESS, 1.0);
+	gl_FragColor = vec4(lift + color * light * BRIGHTNESS, 1.0);
 
 	if (lift > 0.2) {
 		gl_FragColor.r = gl_FragColor.r * 0.6;

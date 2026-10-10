@@ -21,6 +21,7 @@ All of these are in the Preview Options popover, work in every view mode and are
 - **Ambient occlusion** and **cavity** (like Blender's).
 - **Outlines** around silhouettes and, optionally, on sharp creases.
 - **Rim light** for crisp silhouettes against a backlight.
+- **Prototype grid:** shows elements without a texture with a calm checker grid instead of their marker colors, like the prototype textures used for blockouts in game engines. Color and tile size are adjustable (16 units = 1 m at a 1/16 export scale).
 - **Selection and hover outlines:** selected and hovered elements get an outline instead of a tint (on by default), with a faint line where they're hidden behind other geometry.
 - Effects also show in Paint mode (can be turned off).
 

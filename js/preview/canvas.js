@@ -136,6 +136,18 @@ export const Canvas = {
 	})(),
 	emptyMaterials: [],
 	coloredSolidMaterials: [],
+	// Shared by all marker color materials, see shaders/prototype.glsl
+	prototype_uniforms: {
+		PROTOTYPE: {value: false},
+		PROTOTYPE_COLOR: {value: new THREE.Color()},
+		PROTOTYPE_SIZE: {value: 16},
+	},
+	updatePrototypeMaterials() {
+		let uniforms = Canvas.prototype_uniforms;
+		uniforms.PROTOTYPE.value = !!settings.preview_prototype.value;
+		uniforms.PROTOTYPE_COLOR.value.set(settings.preview_prototype_color.value);
+		uniforms.PROTOTYPE_SIZE.value = settings.preview_prototype_size.value;
+	},
 	getEmptyMaterial(index) {
 		return Canvas.emptyMaterials[index % Canvas.emptyMaterials.length];
 	},
@@ -154,6 +166,7 @@ export const Canvas = {
 			this.tex.needsUpdate = true;
 		}
 
+		Canvas.updatePrototypeMaterials();
 		markerColors.forEach(function(color, i) {
 			if (Canvas.emptyMaterials[i]) return;
 
@@ -161,7 +174,8 @@ export const Canvas = {
 			let commonUniforms = {
 				SHADE: {type: 'bool', value: settings.shading.value},
 				BRIGHTNESS: {type: 'bool', value: settings.brightness.value / 50},
-				base: {value: new THREE.Color().set(color.pastel)}
+				base: {value: new THREE.Color().set(color.pastel)},
+				...Canvas.prototype_uniforms,
 			}
 
 			// Empty texture materials
@@ -173,6 +187,7 @@ export const Canvas = {
 				vertexShader: prepareShader(MarkerVertShader),
 				fragmentShader: prepareShader(MarkerFragShader),
 				side: THREE.DoubleSide,
+				extensions: {derivatives: true},
 			})
 
 			// Colored solid materials
@@ -180,7 +195,8 @@ export const Canvas = {
 				uniforms: commonUniforms,
 				vertexShader: prepareShader(SolidMaterialVertShader),
 				fragmentShader: prepareShader(SolidMaterialFragShader),
-				side: THREE.DoubleSide
+				side: THREE.DoubleSide,
+				extensions: {derivatives: true},
 			});
 		})
 	},
