@@ -691,11 +691,14 @@ function scheduleHoverRefresh() {
 type PivotTarget = {
 	type: 'corner' | 'edge' | 'face'
 	world: THREE.Vector3
+	// Points of the snapped feature in world space: one corner, the two ends of an edge or the four corners of a face
+	feature: THREE.Vector3[]
+	cube: Cube
 }
 /**
  * Find the corner, edge middle or face center of the cube face under the mouse
  */
-function getPivotTargetAtMouse(): {cube: Cube, target: PivotTarget} | null {
+function getPivotTargetAtMouse(): PivotTarget | null {
 	let preview = getPreviewAtMouse();
 	if (!preview) return null;
 	let event = getMouseEvent();
@@ -724,7 +727,7 @@ function getPivotTargetAtMouse(): {cube: Cube, target: PivotTarget} | null {
 
 	let corner_index = screen_corners.findIndex(corner => corner.distanceTo(mouse) < Math.min(CORNER_SNAP_DISTANCE, face_span * 0.3));
 	if (corner_index != -1) {
-		return {cube, target: {type: 'corner', world: corners[corner_index]}};
+		return {cube, type: 'corner', world: corners[corner_index], feature: [corners[corner_index]]};
 	}
 	let edge_threshold = Math.min(EDGE_GRAB_DISTANCE, face_span * 0.2);
 	let closest_edge = -1;
@@ -737,10 +740,164 @@ function getPivotTargetAtMouse(): {cube: Cube, target: PivotTarget} | null {
 		}
 	}
 	if (closest_edge != -1) {
-		let middle = corners[closest_edge].clone().add(corners[(closest_edge+1) % 4]).multiplyScalar(0.5);
-		return {cube, target: {type: 'edge', world: middle}};
+		let ends = [corners[closest_edge], corners[(closest_edge+1) % 4]];
+		let middle = ends[0].clone().add(ends[1]).multiplyScalar(0.5);
+		return {cube, type: 'edge', world: middle, feature: ends};
 	}
-	return {cube, target: {type: 'face', world: local((low[b] + high[b]) / 2, (low[c] + high[c]) / 2)}};
+	return {cube, type: 'face', world: local((low[b] + high[b]) / 2, (low[c] + high[c]) / 2), feature: corners};
+}
+
+type PivotNode = OutlinerElement | Group;
+/**
+ * Nodes whose pivot gets set: the selected groups in bone rig formats, otherwise the selected elements,
+ * otherwise the hovered cube
+ */
+function getPivotNodes(target: PivotTarget | null): PivotNode[] {
+	if (Format.bone_rig && Group.first_selected) {
+		return Group.multi_selected.filter(group => !group.locked);
+	}
+	let elements = Outliner.selected.filter(el => !el.locked && typeof el['transferOrigin'] == 'function' && el.getTypeBehavior('rotatable'));
+	if (elements.length) return elements;
+	return target ? [target.cube] : [];
+}
+function setPivots(nodes: PivotNode[], world: THREE.Vector3) {
+	for (let node of nodes) {
+		let parent = node.mesh.parent;
+		parent.updateMatrixWorld();
+		let parent_origin = node.parent instanceof Group ? node.parent.origin : [0, 0, 0];
+		let origin = parent.worldToLocal(world.clone()).add(new THREE.Vector3().fromArray(parent_origin));
+		node['transferOrigin'](origin.toArray().map(v => Math.roundTo(v, 4)) as ArrayVector3);
+	}
+}
+
+const PIVOT_PREVIEW_COLOR = '#ffc23d';
+// Live preview while the Set Pivot at Cursor key is held
+let pivot_preview: {
+	object: THREE.Object3D | null
+	target: PivotTarget | null
+	release_key: number
+	cleanup: () => void
+} | null = null;
+
+function removePivotPreviewObject() {
+	let object = pivot_preview?.object;
+	if (!object) return;
+	object.parent?.remove(object);
+	let materials = new Set<THREE.Material>();
+	object.traverse(child => {
+		if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
+			child.geometry.dispose();
+			materials.add(child.material as THREE.Material);
+		}
+	})
+	materials.forEach(material => material.dispose());
+	pivot_preview.object = null;
+}
+
+function drawPivotPreview() {
+	if (!pivot_preview) return;
+	removePivotPreviewObject();
+	let target = getPivotTargetAtMouse();
+	pivot_preview.target = target;
+	let preview = getPreviewAtMouse() ?? Preview.selected;
+	let nodes = getPivotNodes(target);
+	if (!target || !preview || !nodes.length) {
+		Blockbench.setCursorTooltip(tl('message.set_pivot_at_cursor.no_face'));
+		return;
+	}
+	// A warm color that stands out against the blue selection and marker colors
+	let color = new THREE.Color(PIVOT_PREVIEW_COLOR);
+	let group = new THREE.Object3D();
+	let fill_material = new THREE.MeshBasicMaterial({color, transparent: true, depthTest: false, side: THREE.DoubleSide});
+	let faint_material = new THREE.MeshBasicMaterial({color, transparent: true, opacity: 0.35, depthTest: false, side: THREE.DoubleSide});
+
+	// Size things in pixels so they read the same at any zoom
+	let right = new THREE.Vector3(1, 0, 0).applyQuaternion(preview.camera.quaternion);
+	let unitsPerPixel = (point: THREE.Vector3) => {
+		return 1 / Math.max(toScreen(preview, point).distanceTo(toScreen(preview, point.clone().add(right))), 0.001);
+	}
+
+	// A bar between two points with a constant thickness on screen
+	let addBar = (start: THREE.Vector3, end: THREE.Vector3, pixels: number, material: THREE.Material) => {
+		let length = start.distanceTo(end);
+		if (length < 1e-4) return;
+		let middle = start.clone().add(end).multiplyScalar(0.5);
+		let bar = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, length, 8, 1), material);
+		let radius = unitsPerPixel(middle) * pixels;
+		bar.scale.set(radius, 1, radius);
+		bar.position.copy(middle);
+		bar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), end.clone().sub(start).normalize());
+		group.add(bar);
+	}
+	let addDot = (position: THREE.Vector3, pixels: number, material: THREE.Material) => {
+		let dot = new THREE.Mesh(new THREE.SphereGeometry(unitsPerPixel(position) * pixels, 16, 12), material);
+		dot.position.copy(position);
+		group.add(dot);
+	}
+
+	// Snapped feature
+	if (target.type == 'edge') {
+		addBar(target.feature[0], target.feature[1], 2, fill_material);
+	} else if (target.type == 'face') {
+		target.feature.forEach((corner, i) => addBar(corner, target.feature[(i+1) % 4], 1.5, fill_material));
+	}
+	// Target point
+	let target_size = unitsPerPixel(target.world);
+	addDot(target.world, 6, fill_material);
+	let ring = new THREE.Mesh(new THREE.RingGeometry(target_size * 11, target_size * 14, 40), fill_material);
+	ring.position.copy(target.world);
+	ring.quaternion.copy(preview.camera.quaternion);
+	group.add(ring);
+
+	// Lines from the current pivots to the target
+	for (let node of nodes) {
+		let from = node.mesh.getWorldPosition(new THREE.Vector3());
+		if (from.distanceTo(target.world) < 1e-4) continue;
+		addBar(from, target.world, 1.2, faint_material);
+		addDot(from, 4, fill_material);
+	}
+	// @ts-expect-error
+	group.exclude_from_effects = true;
+	group.traverse(child => {
+		child.renderOrder = 950;
+		child.no_export = true;
+	})
+	Canvas.scene.add(group);
+	pivot_preview.object = group;
+
+	let label = tl('message.set_pivot_at_cursor.preview.' + target.type);
+	if (nodes.length > 1) {
+		label += ' (' + nodes.length + ')';
+	} else if (nodes[0] !== target.cube) {
+		label += ' (' + nodes[0].name + ')';
+	}
+	Blockbench.setCursorTooltip(label);
+}
+
+function endPivotPreview(apply: boolean) {
+	if (!pivot_preview) return;
+	let target = pivot_preview.target;
+	pivot_preview.cleanup();
+	removePivotPreviewObject();
+	pivot_preview = null;
+	Blockbench.setCursorTooltip();
+	if (apply) applyPivotTarget(target);
+}
+
+function applyPivotTarget(target: PivotTarget | null) {
+	let nodes = getPivotNodes(target);
+	if (!target || !nodes.length) {
+		Blockbench.showQuickMessage('message.set_pivot_at_cursor.no_face');
+		return;
+	}
+	let groups = nodes.filter(node => node instanceof Group) as Group[];
+	let elements = nodes.filter(node => node instanceof Group == false) as OutlinerElement[];
+	Undo.initEdit({elements, groups});
+	setPivots(nodes, target.world);
+	Canvas.updateView({elements, groups, element_aspects: {transform: true, geometry: true}, selection: true});
+	updateSelection();
+	Undo.finishEdit('Set pivot at cursor');
+	Blockbench.showQuickMessage('message.set_pivot_at_cursor.' + target.type);
 }
 
 BARS.defineActions(function() {
@@ -755,27 +912,41 @@ BARS.defineActions(function() {
 		category: 'transform',
 		condition: {modes: ['edit'], project: true},
 		keybind: new Keybind({key: 'c'}),
-		click() {
-			let result = getPivotTargetAtMouse();
-			if (!result) {
-				Blockbench.showQuickMessage('message.set_pivot_at_cursor.no_face');
+		click(event) {
+			if (pivot_preview) return;
+			if (!(event instanceof KeyboardEvent) || event.type != 'keydown') {
+				applyPivotTarget(getPivotTargetAtMouse());
 				return;
 			}
-			let {cube, target} = result;
-			// Grabbing a selected cube sets the pivot of the whole selection to the same point
-			let elements = (cube.selected ? Cube.selected : [cube]).filter(el => !el.locked);
-			Undo.initEdit({elements});
-			for (let el of elements) {
-				let parent = el.mesh.parent;
-				parent.updateMatrixWorld();
-				let parent_origin = el.parent instanceof Group ? el.parent.origin : [0, 0, 0];
-				let origin = parent.worldToLocal(target.world.clone()).add(new THREE.Vector3().fromArray(parent_origin));
-				el.transferOrigin(origin.toArray().map(v => Math.roundTo(v, 4)) as ArrayVector3);
+			// Holding the key shows where the pivot will go, releasing it applies
+			let onPointerMove = () => drawPivotPreview();
+			let onKeyUp = (e: KeyboardEvent) => {
+				if (e.which == pivot_preview?.release_key) endPivotPreview(true);
 			}
-			Canvas.updateView({elements, element_aspects: {transform: true, geometry: true}, selection: true});
-			updateSelection();
-			Undo.finishEdit('Set pivot at cursor');
-			Blockbench.showQuickMessage('message.set_pivot_at_cursor.' + target.type);
+			let onKeyDown = (e: KeyboardEvent) => {
+				if (e.key == 'Escape') {
+					e.preventDefault();
+					e.stopPropagation();
+					endPivotPreview(false);
+				}
+			}
+			let onBlur = () => endPivotPreview(false);
+			document.addEventListener('pointermove', onPointerMove);
+			document.addEventListener('keyup', onKeyUp, true);
+			document.addEventListener('keydown', onKeyDown, true);
+			window.addEventListener('blur', onBlur);
+			pivot_preview = {
+				object: null,
+				target: null,
+				release_key: event.which,
+				cleanup() {
+					document.removeEventListener('pointermove', onPointerMove);
+					document.removeEventListener('keyup', onKeyUp, true);
+					document.removeEventListener('keydown', onKeyDown, true);
+					window.removeEventListener('blur', onBlur);
+				}
+			};
+			drawPivotPreview();
 		}
 	})
 

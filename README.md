@@ -27,7 +27,7 @@ All of these are in the Preview Options popover, work in every view mode and are
 
 ### Modeling
 - **Face Drag tool (Q)** for blockouts: drag a cube face to move the cube along the plane of that face, Alt-drag it to move the cube along the face normal, or Shift-drag it to push or pull the face and resize the cube. Near an edge a handle appears: drag it to rotate the cube around its center, about the axis the edge runs along, with the edge following the mouse on screen (Shift snaps to 22.5°). The face or edge under the cursor is highlighted, Ctrl snaps finer, Escape cancels, and grabbing an already selected cube drags the whole selection.
-- **Set Pivot at Cursor (C):** hover over a cube face and press C to put the pivot on the nearest corner, the middle of the nearest edge, or the center of the face, without moving the geometry. With the hovered cube selected, every selected cube gets the same pivot.
+- **Set Pivot at Cursor (C):** hover over any cube face and hold C to preview where the pivot goes: the nearest corner, the middle of the nearest edge or the center of the face, with a line from each current pivot to it. Release C to apply, Escape to cancel. It sets the pivot of the selection (selected groups in bone rig formats), so you can snap it to a feature of another object, or of the hovered cube when nothing is selected. The geometry doesn't move.
 - **Shift-drag a move arrow** to move on the plane perpendicular to it.
 - **Drag the selection with the resize tool** to scale it uniformly.
 - **Pivots move along with elements**, so moved elements keep their pivot relative to their geometry.
