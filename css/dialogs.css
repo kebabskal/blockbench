@@ -211,8 +211,21 @@
 	.form_group_content > .dialog_bar.form_bar:first-child {
 		margin-top: 2px;
 	}
+	.form_group_collapse_toggle {
+		margin-left: auto;
+		padding: 0 2px;
+		cursor: pointer;
+		color: var(--color-subtle_text);
+		transition: transform 200ms ease;
+	}
+	.form_group_collapse_toggle:hover {
+		color: var(--color-light);
+	}
+	.form_group_collapse_toggle.collapsed {
+		transform: rotate(-90deg);
+	}
 	@media (prefers-reduced-motion: reduce) {
-		.form_group {
+		.form_group, .form_group_collapse_toggle {
 			transition: none;
 		}
 	}

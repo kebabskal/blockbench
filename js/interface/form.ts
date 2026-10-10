@@ -74,6 +74,10 @@ export interface FormElementOptions {
 	 */
 	group?: string
 	/**
+	 * Adds an arrow to this input to collapse the panel of the given group, while keeping its inputs active
+	 */
+	collapses?: string
+	/**
 	 * When using 'range' type, allow users to modify the numeric input
 	 */
 	editable_range_label?: boolean
@@ -180,6 +184,7 @@ export class InputForm extends EventSystem {
 	max_label_width: number
 	uses_wide_inputs: boolean
 	groups: Record<string, {node: HTMLElement, form_ids: string[]}>
+	group_toggles: Record<string, HTMLElement>
 
 	constructor(form_config: InputFormConfig, options = {}) {
 		super();
@@ -198,6 +203,7 @@ export class InputForm extends EventSystem {
 		this.deleteFormElements();
 		jq_node.empty();
 		this.groups = {};
+		this.group_toggles = {};
 		let current_group: {node: HTMLElement, content: HTMLElement, id: string} = null;
 		for (let form_id in this.form_config) {
 			let input_config = this.form_config[form_id];
@@ -213,6 +219,18 @@ export class InputForm extends EventSystem {
 			form_element.build(bar);
 			form_element.setup();
 			if (form_element.uses_wide_inputs) this.uses_wide_inputs = true;
+
+			let collapses = typeof input_config == 'object' && input_config.collapses;
+			if (collapses) {
+				let toggle = Interface.createElement('i', {class: 'material-icons form_group_collapse_toggle', title: tl('dialog.form.collapse_group')}, 'expand_more');
+				toggle.addEventListener('click', event => {
+					event.stopPropagation();
+					InputForm.setGroupCollapsed(collapses, !InputForm.isGroupCollapsed(collapses));
+					this.update(this.getResult());
+				});
+				this.group_toggles[collapses] = toggle;
+				bar.append(toggle);
+			}
 
 			let group_id = typeof input_config == 'object' && input_config.group;
 			if (group_id) {
@@ -278,9 +296,32 @@ export class InputForm extends EventSystem {
 		}
 		for (let group_id in group_visibility) {
 			let node = this.groups[group_id].node;
-			node.classList.toggle('open', group_visibility[group_id]);
-			node.toggleAttribute('inert', !group_visibility[group_id]);
+			let open = group_visibility[group_id] && !InputForm.isGroupCollapsed(group_id);
+			node.classList.toggle('open', open);
+			node.toggleAttribute('inert', !open);
+			let toggle = this.group_toggles?.[group_id];
+			if (toggle) {
+				// Only offer collapsing while the group has something to show
+				toggle.style.visibility = group_visibility[group_id] ? '' : 'hidden';
+				toggle.classList.toggle('collapsed', !open);
+			}
 		}
+	}
+	static isGroupCollapsed(group_id: string): boolean {
+		try {
+			return localStorage.getItem('form_group_collapsed.' + group_id) == 'true';
+		} catch (err) {
+			return false;
+		}
+	}
+	static setGroupCollapsed(group_id: string, collapsed: boolean) {
+		try {
+			if (collapsed) {
+				localStorage.setItem('form_group_collapsed.' + group_id, 'true');
+			} else {
+				localStorage.removeItem('form_group_collapsed.' + group_id);
+			}
+		} catch (err) {}
 	}
 	updateValues(context: {cause?: string, changed_keys?: string[]} = {}) {
 		let form_result = this.getResult();

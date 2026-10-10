@@ -776,6 +776,7 @@
 	"dialog.animation_export.title": "Select Animations to Export",
 
 	"dialog.change_animation_speed.speed": "Speed",
+	"dialog.form.collapse_group": "Show or hide settings",
 	"dialog.change_animation_speed.adjust_snapping": "Adjust Snapping",
 	"dialog.optimize_animation.selection": "Selection",
 	"dialog.optimize_animation.selection.selected_keyframes": "Selected Keyframes",

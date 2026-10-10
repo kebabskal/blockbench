@@ -2181,7 +2181,8 @@ interface PreviewOptionsFormResult {
 }
 export const ViewOptionsDialog = new ConfigDialog('preview_view_options', {
 	title: 'dialog.preview_options.title',
-	width: 320,
+	// Wide enough for the inline selects of the highlight and effect options to fit on one line
+	width: 460,
 	form: {
 		background: {
 			label: 'dialog.preview_options.background',
@@ -2237,7 +2238,7 @@ export const ViewOptionsDialog = new ConfigDialog('preview_view_options', {
 		}},
 		// Lighting & effects, see viewport_effects.ts
 		_effects: '_',
-		preview_shadows: {label: 'settings.preview_shadows', type: 'inline_select', options: {
+		preview_shadows: {label: 'settings.preview_shadows', type: 'inline_select', collapses: 'shadows', options: {
 			off: 'settings.preview_shadows.off',
 			hard: 'settings.preview_shadows.hard',
 			soft: 'settings.preview_shadows.soft',
@@ -2248,21 +2249,21 @@ export const ViewOptionsDialog = new ConfigDialog('preview_view_options', {
 		preview_light_height: effectRange('preview_light_height', 'shadows', 5, 90, 1, result => result.preview_shadows != 'off'),
 		preview_ground_shadow: {label: 'settings.preview_ground_shadow', type: 'checkbox', style: 'toggle_switch', group: 'shadows', condition: result => result.preview_shadows != 'off'},
 		_ssao: '_',
-		preview_ssao: {label: 'settings.preview_ssao', type: 'checkbox', style: 'toggle_switch'},
+		preview_ssao: {label: 'settings.preview_ssao', type: 'checkbox', style: 'toggle_switch', collapses: 'ssao'},
 		preview_ssao_radius: effectRange('preview_ssao_radius', 'ssao', 0.5, 64, 0.5, result => result.preview_ssao),
 		preview_ssao_strength: effectRange('preview_ssao_strength', 'ssao', 0, 200, 1, result => result.preview_ssao),
 		_cavity: '_',
-		preview_cavity: {label: 'settings.preview_cavity', type: 'checkbox', style: 'toggle_switch'},
+		preview_cavity: {label: 'settings.preview_cavity', type: 'checkbox', style: 'toggle_switch', collapses: 'cavity'},
 		preview_cavity_ridge: effectRange('preview_cavity_ridge', 'cavity', 0, 200, 1, result => result.preview_cavity),
 		preview_cavity_valley: effectRange('preview_cavity_valley', 'cavity', 0, 200, 1, result => result.preview_cavity),
 		_outline: '_',
-		preview_outline: {label: 'settings.preview_outline', type: 'checkbox', style: 'toggle_switch'},
+		preview_outline: {label: 'settings.preview_outline', type: 'checkbox', style: 'toggle_switch', collapses: 'outline'},
 		preview_outline_color: {label: 'settings.preview_outline_color', type: 'color', group: 'outline', condition: result => result.preview_outline},
 		preview_outline_width: effectRange('preview_outline_width', 'outline', 0.5, 10, 0.5, result => result.preview_outline),
 		preview_outline_opacity: effectRange('preview_outline_opacity', 'outline', 0, 100, 1, result => result.preview_outline),
 		preview_outline_creases: {label: 'settings.preview_outline_creases', type: 'checkbox', style: 'toggle_switch', group: 'outline', condition: result => result.preview_outline},
 		_rim: '_',
-		preview_rim: {label: 'settings.preview_rim', type: 'checkbox', style: 'toggle_switch'},
+		preview_rim: {label: 'settings.preview_rim', type: 'checkbox', style: 'toggle_switch', collapses: 'rim'},
 		preview_rim_color: {label: 'settings.preview_rim_color', type: 'color', group: 'rim', condition: result => result.preview_rim},
 		preview_rim_intensity: effectRange('preview_rim_intensity', 'rim', 0, 200, 1, result => result.preview_rim),
 		preview_rim_width: effectRange('preview_rim_width', 'rim', 0.5, 20, 0.5, result => result.preview_rim),
