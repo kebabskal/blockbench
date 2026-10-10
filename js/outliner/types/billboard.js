@@ -584,7 +584,7 @@ new NodePreviewController(Billboard, {
 	updateHighlight(element, hover_cube, force_off) {
 		let mesh = element.mesh;
 		let highlighted = (
-			Settings.get('highlight_cubes') &&
+			Settings.get('element_highlight') == 'tint' &&
 			((hover_cube == element && !Transformer.dragging) || element.selected) &&
 			Modes.edit &&
 			!force_off

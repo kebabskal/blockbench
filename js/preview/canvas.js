@@ -428,6 +428,17 @@ export const Canvas = {
 		Canvas.normalHelperMaterial.uniforms.SHADE.value = settings.shading.value;
 		Blockbench.dispatchEvent('update_scene_shading');
 	},
+	// Element under the cursor in the viewport
+	hovered_element: null,
+	/**
+	 * Whether the selection of this element is shown by the viewport outline instead of its wireframe
+	 */
+	outlinesSelection(element) {
+		if (settings.element_highlight.value != 'outline' || !Modes.edit) return false;
+		if (element instanceof Mesh && BarItems.selection_mode.value != 'object') return false;
+		if (element instanceof SplineMesh && BarItems.spline_selection_mode.value != 'object') return false;
+		return true;
+	},
 	updateCubeHighlights(hover_cube, force_off) {
 		Outliner.elements.forEach(element => {
 			if (element.visibility && element.mesh.geometry && element.preview_controller.updateHighlight) {

@@ -183,8 +183,14 @@ function setupSettings() {
 	//Edit
 	new Setting('undo_selections',			{category: 'edit', value: false});
 	new Setting('undo_limit',				{category: 'edit', value: 256, type: 'number', min: 1});
-	new Setting('highlight_cubes',  		{category: 'edit', value: true, onChange() {
+	// How hovered and selected elements are highlighted in the viewport. "outline" is drawn by viewport_effects.ts
+	new Setting('element_highlight',		{category: 'edit', value: 'outline', type: 'select', options: {
+		off: tl('settings.element_highlight.off'),
+		tint: tl('settings.element_highlight.tint'),
+		outline: tl('settings.element_highlight.outline'),
+	}, onChange() {
 		Canvas.updateCubeHighlights();
+		updateSelection();
 	}});
 	new Setting('outliner_reveal_on_select', {category: 'edit', value: true})
 	new Setting('allow_display_slot_mirror', {category: 'edit', value: false, onChange(value) {

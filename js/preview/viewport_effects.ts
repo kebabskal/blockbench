@@ -52,6 +52,21 @@ void main() {
 	gl_FragColor = vec4(normal * 0.5 + 0.5, 1.0);
 }`;
 
+// Mask of highlighted elements: red for selected, green for hovered, blue is the depth
+const MASK_FRAGMENT = `
+#include <common>
+#include <clipping_planes_pars_fragment>
+uniform sampler2D map;
+uniform bool USE_MAP;
+uniform vec4 maskColor;
+varying vec3 vViewNormal;
+varying vec2 vUv;
+void main() {
+	#include <clipping_planes_fragment>
+	if (USE_MAP && texture2D(map, vUv).a < 0.01) discard;
+	gl_FragColor = vec4(maskColor.rg, gl_FragCoord.z, 1.0);
+}`;
+
 const AO_FRAGMENT = `
 uniform sampler2D tDepth;
 uniform sampler2D tNormal;
@@ -169,6 +184,12 @@ uniform bool CREASES_ON;
 uniform float outlineWidth;
 uniform vec3 outlineColor;
 uniform float outlineOpacity;
+
+uniform bool HIGHLIGHT_ON;
+uniform sampler2D tMask;
+uniform vec3 selectColor;
+uniform vec3 hoverColor;
+uniform float highlightWidth;
 
 varying vec2 vUv;
 ${VIEW_POSITION_GLSL}
@@ -333,6 +354,29 @@ void main() {
 		rgb = mix(rgb, outlineColor, outline);
 		alpha = mix(alpha, 1.0, outline);
 	}
+
+	if (HIGHLIGHT_ON) {
+		// Line just outside of the silhouette of selected and hovered elements.
+		// Parts hidden behind other geometry get a faint line, so hidden elements can still be found
+		vec2 center_mask = texture2D(tMask, vUv).rg;
+		vec2 near_mask = vec2(0.0);
+		for (int i = 0; i < 12; i++) {
+			float angle = float(i) / 12.0 * 6.2831853;
+			vec2 direction = vec2(cos(angle), sin(angle)) / resolution;
+			for (int j = 1; j <= 2; j++) {
+				vec2 sample_uv = vUv + direction * highlightWidth * float(j) * 0.5;
+				vec4 mask = texture2D(tMask, sample_uv);
+				float visible = mask.b <= texture2D(tDepth, sample_uv).x + 0.00002 ? 1.0 : 0.3;
+				near_mask = max(near_mask, mask.rg * visible);
+			}
+		}
+		float selected_line = clamp(near_mask.r - center_mask.r, 0.0, 1.0);
+		float hovered_line = clamp(near_mask.g - center_mask.g, 0.0, 1.0);
+		rgb = mix(rgb, selectColor, selected_line);
+		alpha = mix(alpha, 1.0, selected_line);
+		rgb = mix(rgb, hoverColor, hovered_line);
+		alpha = mix(alpha, 1.0, hovered_line);
+	}
 	gl_FragColor = vec4(rgb, alpha);
 }`;
 
@@ -344,6 +388,7 @@ type EffectTargets = {
 	ao: THREE.WebGLRenderTarget
 	ao_blur: THREE.WebGLRenderTarget
 	shadow: THREE.WebGLRenderTarget
+	mask: THREE.WebGLRenderTarget
 }
 
 const SHADOW_MAP_SIZE = 2048;
@@ -408,6 +453,11 @@ const composite_material = createPassMaterial(COMPOSITE_FRAGMENT, {
 	outlineWidth: {value: 2},
 	outlineColor: {value: new THREE.Color()},
 	outlineOpacity: {value: 1},
+	HIGHLIGHT_ON: {value: false},
+	tMask: {value: null},
+	selectColor: {value: new THREE.Color()},
+	hoverColor: {value: new THREE.Color()},
+	highlightWidth: {value: 2},
 });
 
 // Materials used to render normals and depth, per original material, so texture transparency is respected
@@ -437,16 +487,46 @@ function getPrepassMaterial(material: THREE.Material): THREE.Material {
 	return prepass_material;
 }
 
+const mask_materials = {
+	selected: new WeakMap<THREE.Material, THREE.ShaderMaterial>(),
+	hovered: new WeakMap<THREE.Material, THREE.ShaderMaterial>(),
+};
+function getMaskMaterial(material: THREE.Material, channel: 'selected' | 'hovered'): THREE.Material {
+	if (!material || material.visible === false) return hidden_material;
+	let mask_material = mask_materials[channel].get(material);
+	if (!mask_material) {
+		mask_material = new THREE.ShaderMaterial({
+			uniforms: {
+				map: {value: null},
+				USE_MAP: {value: false},
+				maskColor: {value: channel == 'selected' ? new THREE.Vector4(1, 0, 0, 1) : new THREE.Vector4(0, 1, 0, 1)},
+			},
+			vertexShader: PREPASS_VERTEX,
+			fragmentShader: MASK_FRAGMENT,
+			clipping: true,
+			blending: THREE.NoBlending,
+		});
+		mask_materials[channel].set(material, mask_material);
+	}
+	// @ts-ignore
+	let map = material.uniforms?.map?.value ?? material.map ?? null;
+	mask_material.uniforms.map.value = map;
+	mask_material.uniforms.USE_MAP.value = !!map;
+	mask_material.side = material.side;
+	mask_material.clippingPlanes = material.clippingPlanes;
+	return mask_material;
+}
+
 /**
  * Temporarily swap the materials of all meshes for the prepass and hide everything else (outlines, vertex points, helpers)
  */
-function prepareForPrepass(root: THREE.Object3D): () => void {
+function prepareForPrepass(root: THREE.Object3D, getMaterial: (material: THREE.Material) => THREE.Material = getPrepassMaterial): () => void {
 	let restore: (() => void)[] = [];
 	root.traverse((object: any) => {
-		if (object === root) return;
+		if (object === root && !object.isMesh) return;
 		if (object.isMesh) {
 			let original = object.material;
-			object.material = original instanceof Array ? original.map(getPrepassMaterial) : getPrepassMaterial(original);
+			object.material = original instanceof Array ? original.map(getMaterial) : getMaterial(original);
 			restore.push(() => object.material = original);
 		} else if (object.visible && (object.isLine || object.isPoints || object.isSprite)) {
 			object.visible = false;
@@ -476,7 +556,7 @@ function getTargets(preview: Preview, width: number, height: number): EffectTarg
 	let targets = targets_per_preview.get(preview);
 	if (targets && targets.width == width && targets.height == height) return targets;
 	if (targets) {
-		for (let key of ['color', 'gbuffer', 'ao', 'ao_blur', 'shadow']) {
+		for (let key of ['color', 'gbuffer', 'ao', 'ao_blur', 'shadow', 'mask']) {
 			targets[key].depthTexture?.dispose();
 			targets[key].dispose();
 		}
@@ -503,6 +583,7 @@ function getTargets(preview: Preview, width: number, height: number): EffectTarg
 		ao: createTarget(width, height),
 		ao_blur: createTarget(width, height),
 		shadow,
+		mask: createTarget(width, height, {type: THREE.FloatType}),
 	};
 	targets_per_preview.set(preview, targets);
 	return targets;
@@ -556,12 +637,43 @@ function renderQuad(renderer: THREE.WebGLRenderer, material: THREE.Material, tar
 	renderer.render(quad, quad_camera);
 }
 
+/**
+ * Elements to outline for the "outline" element highlight mode
+ */
+function getHighlightedElements(): {element: OutlinerElement, channel: 'selected' | 'hovered'}[] {
+	if (settings.element_highlight.value != 'outline' || !Modes.edit) return [];
+	let result = [];
+	for (let element of Outliner.selected) {
+		if (element.mesh && element.visibility !== false && Canvas.outlinesSelection(element)) {
+			result.push({element, channel: 'selected'});
+		}
+	}
+	let hovered = Canvas.hovered_element;
+	if (hovered && hovered.mesh && hovered.visibility !== false && !Transformer.dragging && hovered.preview_controller?.updateHighlight) {
+		result.push({element: hovered, channel: 'hovered'});
+	}
+	return result;
+}
+
+let highlight_color_cache = {css: '', select: new THREE.Color(0x3e90ff), hover: new THREE.Color(0x9ec8ff)};
+function updateHighlightColors() {
+	let css = getComputedStyle(document.body).getPropertyValue('--color-accent').trim();
+	if (css && css != highlight_color_cache.css) {
+		highlight_color_cache.css = css;
+		try {
+			highlight_color_cache.select.set(css);
+			highlight_color_cache.hover.copy(highlight_color_cache.select).lerp(new THREE.Color(0xffffff), 0.5);
+		} catch (err) {}
+	}
+}
+
 export const ViewportEffects = {
 	isActive(preview: Preview): boolean {
 		if (!Project || !Project.model_3d || Modes.paint) return false;
 		// The shaders use GLSL 3 features
 		if (!preview.renderer || !preview.renderer.capabilities.isWebGL2) return false;
-		return settings.preview_shadows.value != 'off' || !!settings.preview_ssao.value || !!settings.preview_cavity.value || !!settings.preview_outline.value;
+		return settings.preview_shadows.value != 'off' || !!settings.preview_ssao.value || !!settings.preview_cavity.value || !!settings.preview_outline.value
+			|| getHighlightedElements().length > 0;
 	},
 	render(preview: Preview, renderScene: () => void, ground_y: number) {
 		let renderer = preview.renderer;
@@ -592,12 +704,14 @@ export const ViewportEffects = {
 			Transformer.visible = transformer_visible;
 
 			// 2. Normals and depth, 3. shadow map
-			let restore = prepareForPrepass(root);
+			let highlighted = getHighlightedElements();
+			let needs_gbuffer = shadows_on || ao_on || cavity_on || outline_on || highlighted.length > 0;
+			let restore = needs_gbuffer ? prepareForPrepass(root) : () => {};
 			try {
 				renderer.autoClear = true;
 				renderer.setClearColor(0x8080ff, 1);
 				renderer.setRenderTarget(targets.gbuffer);
-				renderer.render(root, camera);
+				if (needs_gbuffer) renderer.render(root, camera);
 
 				if (shadows_on) {
 					shadows_on = updateLightCamera(root, ground_y, ground_on);
@@ -609,6 +723,24 @@ export const ViewportEffects = {
 			} finally {
 				restore();
 				renderer.setClearColor(clear_color, previous_clear_alpha);
+			}
+
+			// Mask of highlighted elements
+			if (highlighted.length) {
+				renderer.autoClear = false;
+				renderer.setRenderTarget(targets.mask);
+				renderer.setClearColor(0x000000, 0);
+				renderer.clear();
+				for (let {element, channel} of highlighted) {
+					let restore_mask = prepareForPrepass(element.mesh, material => getMaskMaterial(material, channel));
+					try {
+						renderer.render(element.mesh, camera);
+					} finally {
+						restore_mask();
+					}
+				}
+				renderer.setClearColor(clear_color, previous_clear_alpha);
+				renderer.autoClear = true;
 			}
 
 			// 4. Ambient occlusion
@@ -665,6 +797,14 @@ export const ViewportEffects = {
 				} catch (err) {
 					uniforms.outlineColor.value.set(0x000000);
 				}
+			}
+			uniforms.HIGHLIGHT_ON.value = highlighted.length > 0;
+			if (highlighted.length) {
+				updateHighlightColors();
+				uniforms.tMask.value = targets.mask.texture;
+				uniforms.selectColor.value.copy(highlight_color_cache.select);
+				uniforms.hoverColor.value.copy(highlight_color_cache.hover);
+				uniforms.highlightWidth.value = 2 * window.devicePixelRatio;
 			}
 			renderer.autoClear = true;
 			renderQuad(renderer, composite_material, previous_target);
