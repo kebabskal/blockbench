@@ -708,6 +708,42 @@ export class Menu implements Deletable {
 			handleMenuOverflow(ctxmenu);
 		}
 
+		// Run the entry the mouse is released over, like native menus, so you can press, drag to an entry and release.
+		// A regular click only fires when press and release happen on the same element.
+		let opened_at = performance.now();
+		let opened_position = typeof position == 'object' && 'clientX' in position ? [position.clientX, position.clientY] : null;
+		let pressed_entry: HTMLElement | null = null;
+		scope.node.onmousedown = (ev) => {
+			pressed_entry = (ev.target as HTMLElement).closest('li');
+		}
+		scope.node.onmouseup = (ev) => {
+			if (ev.button !== 0 && ev.button !== 2) return;
+			let target = ev.target as HTMLElement;
+			if (target.closest('input, textarea, .menu_search_bar')) return;
+			let entry = target.closest('li') as HTMLElement;
+			if (!entry || !scope.node.contains(entry)) return;
+			if (entry.classList.contains('parent') || entry.classList.contains('menu_separator')) return;
+			// A left press and release on the same entry is a regular click, which runs it already
+			if (ev.button === 0 && pressed_entry === entry) return;
+			if (!pressed_entry) {
+				// The button was pressed before the menu opened: ignore releasing right away on the same spot
+				let moved = opened_position && Math.hypot(ev.clientX - opened_position[0], ev.clientY - opened_position[1]) > 5;
+				if (!moved && performance.now() - opened_at < 300) return;
+			}
+			pressed_entry = null;
+			ev.preventDefault();
+			if (ev.button === 2) {
+				// Releasing the right button is followed by a context menu event, which must not open another menu
+				const block = (e: Event) => {
+					e.preventDefault();
+					e.stopImmediatePropagation();
+				};
+				window.addEventListener('contextmenu', block, true);
+				setTimeout(() => window.removeEventListener('contextmenu', block, true), 300);
+			}
+			entry.click();
+		}
+
 		scope.node.onclick = (ev) => {
 			let target = ev.target as HTMLElement;
 			if (
