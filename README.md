@@ -26,6 +26,7 @@ All of these are in the Preview Options popover, work in every view mode and are
 - Effects also show in Paint mode (can be turned off).
 
 ### Modeling
+- **Face Drag tool (Q)** for blockouts: drag a cube face to move the cube along the plane of that face, or Shift-drag it to push or pull the face and resize the cube. The face under the cursor is highlighted, Ctrl snaps finer, Escape cancels, and grabbing an already selected cube drags the whole selection.
 - **Shift-drag a move arrow** to move on the plane perpendicular to it.
 - **Drag the selection with the resize tool** to scale it uniformly.
 - **Pivots move along with elements**, so moved elements keep their pivot relative to their geometry.

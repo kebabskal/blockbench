@@ -1069,6 +1069,9 @@ export class Preview {
 			if (Toolbox.selected.paintTool || Toolbox.selected.id == 'knife_tool') {
 				multi_select = group_select = loop_select = false;
 			}
+			// The face drag tool uses Shift to resize, and keeps the selection when grabbing an already selected element
+			let face_drag = Toolbox.selected.id == 'face_drag_tool';
+			if (face_drag) multi_select = loop_select = false;
 
 			function unselectOtherNodes() {
 				Group.multi_selected.empty();
@@ -1091,9 +1094,14 @@ export class Preview {
 				Modes.selected instanceof Mode &&
 				Modes.selected.selectElements &&
 				!(Modes.paint && BarItems.brush_lock_mode.value == 'selected_faces') &&
-				(data.type === 'element' || Toolbox.selected.id == 'knife_tool' || (data.type == 'line' && data.element instanceof SplineMesh))
+				(data.type === 'element' || Toolbox.selected.id == 'knife_tool' || (data.type == 'line' && data.element instanceof SplineMesh)) &&
+				!(face_drag && data.element.selected && !group_select)
 			) {
 				Undo.initSelection();
+				if (face_drag && (event.shiftKey || Pressing.overrides.shift)) {
+					// @ts-expect-error
+					event = {ctrlOrCmd: event.ctrlOrCmd};
+				}
 				if (Toolbox.selected.selectFace && data.face && data.element.type != 'mesh' && data.element.type != 'spline' && (!Modes.paint || BarItems.brush_lock_mode.value == 'none')) {
 					let face_selection = UVEditor.getSelectedFaces(data.element, true);
 					if (data.element.selected && (multi_select || group_select)) {

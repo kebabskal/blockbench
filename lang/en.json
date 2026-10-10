@@ -237,6 +237,7 @@
 	"modifier_actions.unless": "Unless %0",
 	"modifier_actions.resize_both_sides": "Resize in both directions",
 	"modifier_actions.resize_one_side": "Resize in one direction",
+	"modifier_actions.push_pull_face": "Push or pull face",
 	"modifier_actions.draw_line": "Draw line",
 	"modifier_actions.set_copy_source": "Set Copy Source",
 	"modifier_actions.drag_without_snapping": "Drag without snapping",
@@ -1664,6 +1665,8 @@
 
 	"action.vertex_snap_tool": "Vertex Snap",
 	"action.vertex_snap_tool.desc": "Move one cube to another cube by connecting two vertices",
+	"action.face_drag_tool": "Face Drag",
+	"action.face_drag_tool.desc": "Drag a cube face to move the cube along it. Hold Shift to push or pull the face and resize the cube",
 	"action.swap_tools": "Swap Tools",
 	"action.swap_tools.desc": "Switch between alternative tools, like move and resize, or brush and color picker",
 	"action.swap_tools.hold": "Hold to swap (Color Picker)",

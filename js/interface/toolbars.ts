@@ -472,6 +472,7 @@ export const BARS = {
 				'rotate_tool',
 				'pivot_tool',
 				'vertex_snap_tool',
+				'face_drag_tool',
 				'stretch_tool',
 				'knife_tool',
 				'seam_tool',
