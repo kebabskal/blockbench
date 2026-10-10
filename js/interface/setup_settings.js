@@ -165,6 +165,12 @@ function setupSettings() {
 	new Setting('preview_outline_width',			{category: 'preview', value: 2, type: 'number', min: 0.5, max: 10, step: 0.5});
 	new Setting('preview_outline_opacity',			{category: 'preview', value: 100, type: 'number', min: 0, max: 100});
 	new Setting('preview_outline_creases',			{category: 'preview', value: true});
+	new Setting('preview_rim',						{category: 'preview', value: false});
+	new Setting('preview_rim_color',				{category: 'preview', value: '#ffffff', type: 'text'});
+	new Setting('preview_rim_width',				{category: 'preview', value: 3, type: 'number', min: 0.5, max: 20, step: 0.5});
+	new Setting('preview_rim_intensity',			{category: 'preview', value: 80, type: 'number', min: 0, max: 200});
+	new Setting('preview_rim_direction',			{category: 'preview', value: 0, type: 'number', min: 0, max: 360});
+	new Setting('preview_rim_spread',				{category: 'preview', value: 35, type: 'number', min: 0, max: 100});
 	new Setting('display_skin',						{category: 'preview', value: false, type: 'click', icon: 'icon-player', click: function() { changeDisplaySkin() }});
 
 	new Setting('viewport_rotate_speed',	{category: 'controls', value: 100, min: 10, max: 1000, type: 'number', onChange(value) {

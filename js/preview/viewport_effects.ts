@@ -185,6 +185,13 @@ uniform float outlineWidth;
 uniform vec3 outlineColor;
 uniform float outlineOpacity;
 
+uniform bool RIM_ON;
+uniform vec3 rimColor;
+uniform float rimIntensity;
+uniform float rimWidth;
+uniform float rimAngle;
+uniform float rimSpread;
+
 uniform bool HIGHLIGHT_ON;
 uniform sampler2D tMask;
 uniform vec3 selectColor;
@@ -286,9 +293,33 @@ float outlineAmount(float depth) {
 	return 0.0;
 }
 
+/**
+ * Rim light: a pixel is lit when the scene drops away a few pixels further towards the light,
+ * which gives a crisp band along the edges facing the light, like a backlight catching the silhouette
+ */
+float rimAmount(vec3 position, vec3 normal) {
+	float threshold = 0.03 * abs(position.z) + 0.5;
+	float amount = 0.0;
+	for (int i = 0; i < 7; i++) {
+		float t = float(i) / 3.0 - 1.0;
+		float angle = rimAngle + t * rimSpread * 3.1415927;
+		vec2 sample_uv = vUv + vec2(sin(angle), cos(angle)) * rimWidth / resolution;
+		float sample_depth = texture2D(tDepth, sample_uv).x;
+		bool edge = sample_depth >= 1.0;
+		if (!edge) {
+			vec3 sample_position = getViewPosition(sample_uv, sample_depth);
+			// Further away, and behind the plane of this surface, so surfaces at a shallow angle don't light themselves
+			edge = sample_position.z < position.z - threshold && dot(sample_position - position, normal) < -threshold;
+		}
+		if (edge) amount = max(amount, 1.0 - abs(t) * 0.5);
+	}
+	return amount;
+}
+
 void main() {
 	vec4 color = texture2D(tColor, vUv);
 	float depth = texture2D(tDepth, vUv).x;
+	float rim = 0.0;
 	float darken = 1.0;
 	float brighten = 0.0;
 	float shadow = 0.0;
@@ -324,6 +355,10 @@ void main() {
 			darken *= 1.0 - max(-curvature, 0.0) * valley * 0.5;
 		}
 
+		if (RIM_ON) {
+			rim = rimAmount(position, normal);
+		}
+
 		if (SHADOW_ON) {
 			vec3 world_position = (cameraWorld * vec4(position, 1.0)).xyz;
 			vec3 world_normal = normalize(mat3(cameraWorld) * normal);
@@ -346,6 +381,8 @@ void main() {
 
 	vec3 rgb = color.rgb * darken + brighten * color.a;
 	rgb *= 1.0 - shadow;
+	// The rim is a backlight, so it also reaches areas in shadow
+	rgb += rimColor * rim * rimIntensity * color.a;
 	// Shadows also darken a transparent background, which the canvas is composited on
 	float alpha = 1.0 - (1.0 - color.a) * (1.0 - shadow);
 
@@ -453,6 +490,12 @@ const composite_material = createPassMaterial(COMPOSITE_FRAGMENT, {
 	outlineWidth: {value: 2},
 	outlineColor: {value: new THREE.Color()},
 	outlineOpacity: {value: 1},
+	RIM_ON: {value: false},
+	rimColor: {value: new THREE.Color(0xffffff)},
+	rimIntensity: {value: 0.8},
+	rimWidth: {value: 3},
+	rimAngle: {value: 0},
+	rimSpread: {value: 0.35},
 	HIGHLIGHT_ON: {value: false},
 	tMask: {value: null},
 	selectColor: {value: new THREE.Color()},
@@ -672,7 +715,7 @@ export const ViewportEffects = {
 		if (!Project || !Project.model_3d || Modes.paint) return false;
 		// The shaders use GLSL 3 features
 		if (!preview.renderer || !preview.renderer.capabilities.isWebGL2) return false;
-		return settings.preview_shadows.value != 'off' || !!settings.preview_ssao.value || !!settings.preview_cavity.value || !!settings.preview_outline.value
+		return settings.preview_shadows.value != 'off' || !!settings.preview_ssao.value || !!settings.preview_cavity.value || !!settings.preview_outline.value || !!settings.preview_rim.value
 			|| getHighlightedElements().length > 0;
 	},
 	render(preview: Preview, renderScene: () => void, ground_y: number) {
@@ -689,6 +732,7 @@ export const ViewportEffects = {
 		let cavity_on = !!settings.preview_cavity.value;
 		let ground_on = shadows_on && !!settings.preview_ground_shadow.value;
 		let outline_on = !!settings.preview_outline.value;
+		let rim_on = !!settings.preview_rim.value;
 
 		let previous_target = renderer.getRenderTarget();
 		let previous_auto_clear = renderer.autoClear;
@@ -705,7 +749,7 @@ export const ViewportEffects = {
 
 			// 2. Normals and depth, 3. shadow map
 			let highlighted = getHighlightedElements();
-			let needs_gbuffer = shadows_on || ao_on || cavity_on || outline_on || highlighted.length > 0;
+			let needs_gbuffer = shadows_on || ao_on || cavity_on || outline_on || rim_on || highlighted.length > 0;
 			let restore = needs_gbuffer ? prepareForPrepass(root) : () => {};
 			try {
 				renderer.autoClear = true;
@@ -797,6 +841,18 @@ export const ViewportEffects = {
 				} catch (err) {
 					uniforms.outlineColor.value.set(0x000000);
 				}
+			}
+			uniforms.RIM_ON.value = rim_on;
+			if (rim_on) {
+				try {
+					uniforms.rimColor.value.set(settings.preview_rim_color.value as string || '#ffffff');
+				} catch (err) {
+					uniforms.rimColor.value.set(0xffffff);
+				}
+				uniforms.rimIntensity.value = (settings.preview_rim_intensity.value as number) / 100;
+				uniforms.rimWidth.value = (settings.preview_rim_width.value as number) * window.devicePixelRatio;
+				uniforms.rimAngle.value = Math.degToRad(settings.preview_rim_direction.value as number);
+				uniforms.rimSpread.value = (settings.preview_rim_spread.value as number) / 100;
 			}
 			uniforms.HIGHLIGHT_ON.value = highlighted.length > 0;
 			if (highlighted.length) {

@@ -2161,6 +2161,7 @@ const EFFECT_SETTINGS = [
 	'preview_ssao', 'preview_ssao_radius', 'preview_ssao_strength',
 	'preview_cavity', 'preview_cavity_ridge', 'preview_cavity_valley',
 	'preview_outline', 'preview_outline_color', 'preview_outline_width', 'preview_outline_opacity', 'preview_outline_creases',
+	'preview_rim', 'preview_rim_color', 'preview_rim_width', 'preview_rim_intensity', 'preview_rim_direction', 'preview_rim_spread',
 ];
 function effectRange(id: string, group: string, min: number, max: number, step: number, condition: (result: PreviewOptionsFormResult) => boolean) {
 	return {label: 'settings.' + id, type: 'range', group, min, max, step, editable_range_label: true, full_width: true, condition};
@@ -2260,6 +2261,13 @@ export const ViewOptionsDialog = new ConfigDialog('preview_view_options', {
 		preview_outline_width: effectRange('preview_outline_width', 'outline', 0.5, 10, 0.5, result => result.preview_outline),
 		preview_outline_opacity: effectRange('preview_outline_opacity', 'outline', 0, 100, 1, result => result.preview_outline),
 		preview_outline_creases: {label: 'settings.preview_outline_creases', type: 'checkbox', style: 'toggle_switch', group: 'outline', condition: result => result.preview_outline},
+		_rim: '_',
+		preview_rim: {label: 'settings.preview_rim', type: 'checkbox', style: 'toggle_switch'},
+		preview_rim_color: {label: 'settings.preview_rim_color', type: 'color', group: 'rim', condition: result => result.preview_rim},
+		preview_rim_intensity: effectRange('preview_rim_intensity', 'rim', 0, 200, 1, result => result.preview_rim),
+		preview_rim_width: effectRange('preview_rim_width', 'rim', 0.5, 20, 0.5, result => result.preview_rim),
+		preview_rim_direction: effectRange('preview_rim_direction', 'rim', 0, 360, 1, result => result.preview_rim),
+		preview_rim_spread: effectRange('preview_rim_spread', 'rim', 0, 100, 1, result => result.preview_rim),
 	},
 	onOpen() {
 		let custom_color = StateMemory.get('viewport_background_color');
