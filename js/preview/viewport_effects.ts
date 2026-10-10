@@ -262,6 +262,8 @@ float outlineAmount(float depth) {
 	vec3 center_position = depth < 1.0 ? getViewPosition(vUv, depth) : vec3(0.0, 0.0, -1.0e9);
 	vec3 center_normal = depth < 1.0 ? normalize(texture2D(tNormal, vUv).xyz * 2.0 - 1.0) : vec3(0.0, 0.0, 1.0);
 	float threshold = 0.02 * abs(center_position.z) + 0.3;
+	// Only has to reject points on the same surface, so it is much tighter, otherwise low details like thin walls lose their outline
+	float plane_threshold = 0.004 * abs(center_position.z) + 0.05;
 	for (int i = 0; i < 16; i++) {
 		float angle = float(i) / 16.0 * 6.2831853;
 		vec2 direction = vec2(cos(angle), sin(angle));
@@ -274,7 +276,7 @@ float outlineAmount(float depth) {
 			// The neighbor has to be closer to the camera and off the plane of this pixel's surface,
 			// otherwise surfaces seen at a shallow angle would outline themselves
 			if (sample_position.z > center_position.z + threshold &&
-				dot(sample_position - center_position, center_normal) > threshold
+				dot(sample_position - center_position, center_normal) > plane_threshold
 			) return 1.0;
 		}
 	}
@@ -299,6 +301,7 @@ float outlineAmount(float depth) {
  */
 float rimAmount(vec3 position, vec3 normal) {
 	float threshold = 0.03 * abs(position.z) + 0.5;
+	float plane_threshold = 0.004 * abs(position.z) + 0.05;
 	float amount = 0.0;
 	for (int i = 0; i < 7; i++) {
 		float t = float(i) / 3.0 - 1.0;
@@ -309,7 +312,7 @@ float rimAmount(vec3 position, vec3 normal) {
 		if (!edge) {
 			vec3 sample_position = getViewPosition(sample_uv, sample_depth);
 			// Further away, and behind the plane of this surface, so surfaces at a shallow angle don't light themselves
-			edge = sample_position.z < position.z - threshold && dot(sample_position - position, normal) < -threshold;
+			edge = sample_position.z < position.z - threshold && dot(sample_position - position, normal) < -plane_threshold;
 		}
 		if (edge) amount = max(amount, 1.0 - abs(t) * 0.5);
 	}
