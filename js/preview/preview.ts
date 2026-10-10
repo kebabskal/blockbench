@@ -9,6 +9,7 @@ import { CSS3DRenderer } from '../lib/CSS3DRenderer';
 import { PointerTarget } from '../interface/pointer_target';
 import { unselectInterface } from '../interface/interface';
 import { sameMeshEdge } from '../modeling/mesh/util';
+import { ViewportEffects } from './viewport_effects';
 
 const background_scene = new THREE.Scene();
 const background_camera = new THREE.PerspectiveCamera(45, 1, 1, 10);
@@ -733,6 +734,17 @@ export class Preview {
 	}
 	render() {
 		this.controls.update();
+		if (ViewportEffects.isActive(this)) {
+			let ground_y = three_grid.getWorldPosition(Reusable.vec3).y;
+			ViewportEffects.render(this, () => this.renderScene(), ground_y);
+		} else {
+			this.renderScene();
+		}
+		if (this.css_renderer) {
+			this.css_renderer.render(Canvas.scene, this.camera, this == Preview.selected);
+		}
+	}
+	renderScene() {
 		let background = Canvas.scene.background as THREE.CubeTexture;
 		if (this.isOrtho && background?.isCubeTexture) {
 			Canvas.scene.background = null;
@@ -752,9 +764,6 @@ export class Preview {
 			}
 		} else {
 			this.renderer.render(Canvas.scene, this.camera);
-		}
-		if (this.css_renderer) {
-			this.css_renderer.render(Canvas.scene, this.camera, this == Preview.selected);
 		}
 	}
 	// MARK: Camera
@@ -2128,6 +2137,60 @@ Preview.prototype.menu = new Menu([
 			},
 			onCancel() {
 				preview.setFOV(original_fov);
+			}
+		}).show();
+	}},
+	{icon: 'wb_sunny', name: 'menu.preview.effects', click(preview) {
+		const setting_ids = [
+			'preview_shadows', 'preview_shadow_strength', 'preview_shadow_softness', 'preview_light_direction', 'preview_light_height', 'preview_ground_shadow',
+			'preview_ssao', 'preview_ssao_radius', 'preview_ssao_strength',
+			'preview_cavity', 'preview_cavity_ridge', 'preview_cavity_valley',
+		];
+		let original_values = {};
+		for (let id of setting_ids) original_values[id] = settings[id].value;
+
+		const range = (id: string, condition?: (result: any) => boolean) => {
+			let setting = settings[id];
+			return {label: 'settings.' + id, type: 'range', value: setting.value, min: setting.min, max: setting.max, step: setting.step || 1, editable_range_label: true, full_width: true, condition};
+		};
+		const shadows_on = result => result.preview_shadows != 'off';
+		new Dialog({
+			id: 'preview_effects',
+			title: 'menu.preview.effects',
+			width: 480,
+			form: {
+				preview_shadows: {label: 'settings.preview_shadows', type: 'inline_select', value: settings.preview_shadows.value, options: {
+					off: 'settings.preview_shadows.off',
+					hard: 'settings.preview_shadows.hard',
+					soft: 'settings.preview_shadows.soft',
+				}},
+				preview_shadow_strength: range('preview_shadow_strength', shadows_on),
+				preview_shadow_softness: range('preview_shadow_softness', result => result.preview_shadows == 'soft'),
+				preview_light_direction: range('preview_light_direction', shadows_on),
+				preview_light_height: range('preview_light_height', shadows_on),
+				preview_ground_shadow: {label: 'settings.preview_ground_shadow', type: 'checkbox', value: settings.preview_ground_shadow.value, condition: shadows_on},
+				_ao: '_',
+				preview_ssao: {label: 'settings.preview_ssao', type: 'checkbox', value: settings.preview_ssao.value},
+				preview_ssao_radius: range('preview_ssao_radius', result => result.preview_ssao),
+				preview_ssao_strength: range('preview_ssao_strength', result => result.preview_ssao),
+				_cavity: '_',
+				preview_cavity: {label: 'settings.preview_cavity', type: 'checkbox', value: settings.preview_cavity.value},
+				preview_cavity_ridge: range('preview_cavity_ridge', result => result.preview_cavity),
+				preview_cavity_valley: range('preview_cavity_valley', result => result.preview_cavity),
+			},
+			onFormChange(result) {
+				for (let id of setting_ids) {
+					if (result[id] !== undefined) settings[id].value = result[id];
+				}
+			},
+			onConfirm(result) {
+				for (let id of setting_ids) {
+					if (result[id] !== undefined) settings[id].set(result[id]);
+				}
+				Settings.save();
+			},
+			onCancel() {
+				for (let id of setting_ids) settings[id].value = original_values[id];
 			}
 		}).show();
 	}},

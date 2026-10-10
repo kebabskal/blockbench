@@ -142,6 +142,23 @@ function setupSettings() {
 	new Setting('volume', 							{category: 'preview', value: 80, min: 0, max: 200, type: 'number'});
 	new Setting('audio_scrubbing',					{category: 'preview', value: true});
 	new Setting('save_view_per_tab',				{category: 'preview', value: true});
+	// Viewport effects, see preview/viewport_effects.ts
+	new Setting('preview_shadows', 					{category: 'preview', value: 'off', type: 'select', options: {
+		off: tl('settings.preview_shadows.off'),
+		hard: tl('settings.preview_shadows.hard'),
+		soft: tl('settings.preview_shadows.soft'),
+	}});
+	new Setting('preview_shadow_strength',			{category: 'preview', value: 60, type: 'number', min: 0, max: 100});
+	new Setting('preview_shadow_softness',			{category: 'preview', value: 40, type: 'number', min: 1, max: 100});
+	new Setting('preview_light_direction',			{category: 'preview', value: 35, type: 'number', min: 0, max: 360});
+	new Setting('preview_light_height',				{category: 'preview', value: 60, type: 'number', min: 5, max: 90});
+	new Setting('preview_ground_shadow',			{category: 'preview', value: true});
+	new Setting('preview_ssao',						{category: 'preview', value: false});
+	new Setting('preview_ssao_radius',				{category: 'preview', value: 6, type: 'number', min: 0.5, max: 64, step: 0.5});
+	new Setting('preview_ssao_strength',			{category: 'preview', value: 100, type: 'number', min: 0, max: 200});
+	new Setting('preview_cavity',					{category: 'preview', value: false});
+	new Setting('preview_cavity_ridge',				{category: 'preview', value: 100, type: 'number', min: 0, max: 200});
+	new Setting('preview_cavity_valley',			{category: 'preview', value: 100, type: 'number', min: 0, max: 200});
 	new Setting('display_skin',						{category: 'preview', value: false, type: 'click', icon: 'icon-player', click: function() { changeDisplaySkin() }});
 
 	new Setting('viewport_rotate_speed',	{category: 'controls', value: 100, min: 10, max: 1000, type: 'number', onChange(value) {
