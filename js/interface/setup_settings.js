@@ -147,6 +147,7 @@ function setupSettings() {
 	new Setting('preview_effects_in_paint',		{category: 'preview', value: true});
 	new Setting('preview_prototype',				{category: 'preview', value: false, onChange() {Canvas.updatePrototypeMaterials()}});
 	new Setting('preview_prototype_color',			{category: 'preview', value: '#9aa0a8', type: 'text', onChange() {Canvas.updatePrototypeMaterials()}});
+	new Setting('preview_prototype_contrast',		{category: 'preview', value: 30, type: 'number', min: 0, max: 100, step: 1, onChange() {Canvas.updatePrototypeMaterials()}});
 	new Setting('preview_prototype_size',			{category: 'preview', value: 16, type: 'number', min: 1, max: 256, step: 1, onChange() {Canvas.updatePrototypeMaterials()}});
 	new Setting('preview_shadows', 					{category: 'preview', value: 'off', type: 'select', options: {
 		off: tl('settings.preview_shadows.off'),

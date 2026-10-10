@@ -141,12 +141,15 @@ export const Canvas = {
 		PROTOTYPE: {value: false},
 		PROTOTYPE_COLOR: {value: new THREE.Color()},
 		PROTOTYPE_SIZE: {value: 16},
+		PROTOTYPE_CONTRAST: {value: 0.09},
 	},
 	updatePrototypeMaterials() {
 		let uniforms = Canvas.prototype_uniforms;
 		uniforms.PROTOTYPE.value = !!settings.preview_prototype.value;
 		uniforms.PROTOTYPE_COLOR.value.set(settings.preview_prototype_color.value);
 		uniforms.PROTOTYPE_SIZE.value = settings.preview_prototype_size.value;
+		// 100 % contrast makes every other tile 30 % darker
+		uniforms.PROTOTYPE_CONTRAST.value = settings.preview_prototype_contrast.value / 100 * 0.3;
 
 		// Match the marker color swatches of the prototype colors to their shade of the grid color, like prototypeShade() in the shader
 		let hsl = uniforms.PROTOTYPE_COLOR.value.getHSL({});

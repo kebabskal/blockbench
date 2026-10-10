@@ -2157,7 +2157,7 @@ StateMemory.init('viewport_background_color', 'string');
 let view_options_preview: Preview = null;
 const EFFECT_SETTINGS = [
 	'element_highlight', 'selection_display', 'clean_navigation', 'preview_effects_in_paint',
-	'preview_prototype', 'preview_prototype_color', 'preview_prototype_size',
+	'preview_prototype', 'preview_prototype_color', 'preview_prototype_size', 'preview_prototype_contrast',
 	'preview_shadows', 'preview_shadow_strength', 'preview_shadow_softness', 'preview_light_direction', 'preview_light_height', 'preview_ground_shadow',
 	'preview_ssao', 'preview_ssao_radius', 'preview_ssao_strength',
 	'preview_cavity', 'preview_cavity_ridge', 'preview_cavity_valley',
@@ -2238,9 +2238,11 @@ export const ViewOptionsDialog = new ConfigDialog('preview_view_options', {
 			both: 'settings.selection_display.both',
 		}},
 		_prototype: '_',
-		preview_prototype: {label: 'settings.preview_prototype', type: 'checkbox', style: 'toggle_switch', collapses: 'prototype', description: 'settings.preview_prototype.desc'},
-		preview_prototype_color: {label: 'settings.preview_prototype_color', type: 'color', group: 'prototype', condition: result => result.preview_prototype},
-		preview_prototype_size: {...effectRange('preview_prototype_size', 'prototype', 1, 64, 1, result => result.preview_prototype), description: 'settings.preview_prototype_size.desc'},
+		preview_prototype: {label: 'settings.preview_prototype', type: 'checkbox', style: 'toggle_switch', description: 'settings.preview_prototype.desc'},
+		// Always shown, since the Prototype marker colors use them while the toggle is off as well
+		preview_prototype_color: {label: 'settings.preview_prototype_color', type: 'color', group: 'prototype'},
+		preview_prototype_size: {...effectRange('preview_prototype_size', 'prototype', 1, 64, 1, () => true), description: 'settings.preview_prototype_size.desc'},
+		preview_prototype_contrast: effectRange('preview_prototype_contrast', 'prototype', 0, 100, 1, () => true),
 		// Lighting & effects, see viewport_effects.ts
 		_effects: '_',
 		preview_effects_in_paint: {label: 'settings.preview_effects_in_paint', type: 'checkbox', style: 'toggle_switch', description: 'settings.preview_effects_in_paint.desc'},
