@@ -570,7 +570,13 @@ function prepareForPrepass(root: THREE.Object3D, getMaterial: (material: THREE.M
 	let restore: (() => void)[] = [];
 	root.traverse((object: any) => {
 		if (object === root && !object.isMesh) return;
-		if (object.isMesh) {
+		if (object.exclude_from_effects) {
+			// Overlays like the face drag highlight aren't geometry, so they shouldn't cast AO, cavity or outlines
+			if (object.visible) {
+				object.visible = false;
+				restore.push(() => object.visible = true);
+			}
+		} else if (object.isMesh) {
 			let original = object.material;
 			object.material = original instanceof Array ? original.map(getMaterial) : getMaterial(original);
 			restore.push(() => object.material = original);

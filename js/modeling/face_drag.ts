@@ -95,6 +95,8 @@ function showHighlight(cube: Cube, face: string) {
 	fill.renderOrder = 899;
 
 	highlight = new THREE.Object3D();
+	// @ts-expect-error
+	highlight.exclude_from_effects = true;
 	highlight.add(fill, line);
 	highlight.traverse(object => {
 		object.no_export = true;
@@ -236,7 +238,8 @@ function onDragMove(event: PointerEvent) {
 		for (let element of drag.elements) {
 			let el = element as Cube;
 			restoreStartValues(el, drag.start_values.get(el));
-			el.resize(value, axis, direction == -1);
+			// resize() takes the offset along the axis, so faces on the negative side grow with a negative value
+			el.resize(value * direction, axis, direction == -1);
 		}
 		Blockbench.setCursorTooltip(trimFloatNumber(value));
 
