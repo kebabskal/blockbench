@@ -2808,6 +2808,8 @@
 	"cube.color.pink": "Pink",
 	"cube.color.silver": "Silver",
 	"cube.color.prototype": "Prototype",
+	"cube.color.prototype_light": "Prototype Light",
+	"cube.color.prototype_dark": "Prototype Dark",
 
 	"mesh.shading": "Shading",
 	"mesh.shading.flat": "Flat",

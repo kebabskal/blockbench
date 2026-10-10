@@ -3,6 +3,8 @@
 uniform bool PROTOTYPE;
 uniform vec3 PROTOTYPE_COLOR;
 uniform float PROTOTYPE_SIZE;
+// -1 dark, 0 medium, 1 light shade of PROTOTYPE_COLOR
+uniform float PROTOTYPE_TONE;
 
 varying vec3 vWorldPos;
 varying vec3 vWorldNormal;
@@ -28,7 +30,10 @@ vec3 prototypeColor() {
 	}
 	vec2 cell = p / max(PROTOTYPE_SIZE, 0.001);
 	float checker = mod(floor(cell.x) + floor(cell.y), 2.0);
-	vec3 color = PROTOTYPE_COLOR * mix(1.0, 0.88, checker);
+	vec3 base_color = PROTOTYPE_TONE > 0.0
+		? mix(PROTOTYPE_COLOR, vec3(1.0), 0.35 * PROTOTYPE_TONE)
+		: PROTOTYPE_COLOR * (1.0 + 0.3 * PROTOTYPE_TONE);
+	vec3 color = base_color * mix(1.0, 0.88, checker);
 	// Faint lines every quarter tile, stronger lines at the tile edges
 	color *= 1.0 - 0.07 * prototypeLines(cell * 4.0);
 	color *= 1.0 - 0.22 * prototypeLines(cell);
