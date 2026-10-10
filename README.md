@@ -1,5 +1,62 @@
 # Blockbench
 
+## About this fork
+
+This is a fork of [JannisX11/blockbench](https://github.com/JannisX11/blockbench) with changes aimed at modeling and animating for game engines like Godot. Everything below is added on top of upstream Blockbench.
+
+### Viewport navigation and selection
+- **Godot-style navigation:** middle mouse orbits (also on top of models), Shift + middle mouse pans, Ctrl + middle mouse zooms.
+- **Fly camera:** hold right mouse and use WASD to move, Q/E to go down/up, Shift/Ctrl for faster/slower and scroll for the fly speed. A right click without moving still opens the context menu. After flying, the orbit target is placed back on the model.
+- **Selection:** Shift + click adds to the selection, Ctrl + click selects the parent group, dragging on the background box-selects, Escape deselects everything.
+- **F** focuses and zooms to fit the selection.
+- **T** toggles the current tool between local and global space.
+- **Pen input** (Windows Ink) works for viewport navigation.
+- **No hover flicker while navigating:** hover highlights and helpers pause while the camera moves.
+- **Clean view while navigating:** gizmos, grids, wireframes, outlines and element markers are hidden while the camera moves (can be turned off).
+- **The camera and field of view are saved in the project file** and restored when it's opened.
+
+### Viewport effects
+All of these are in the Preview Options popover, work in every view mode and are off by default unless noted.
+- **Shadows** from a sun light, hard or soft, with an optional ground shadow.
+- **Ambient occlusion** and **cavity** (like Blender's).
+- **Outlines** around silhouettes and, optionally, on sharp creases.
+- **Rim light** for crisp silhouettes against a backlight.
+- **Selection and hover outlines:** selected and hovered elements get an outline instead of a tint (on by default), with a faint line where they're hidden behind other geometry.
+- Effects also show in Paint mode (can be turned off).
+
+### Modeling
+- **Shift-drag a move arrow** to move on the plane perpendicular to it.
+- **Drag the selection with the resize tool** to scale it uniformly.
+- **Pivots move along with elements**, so moved elements keep their pivot relative to their geometry.
+- **Add Element** in a group's context menu, and an **Add Mesh shape submenu** (Cube, Plane, Cylinder, ...) that adds the shape directly.
+- **Ctrl+G with one element selected** puts it into the new group.
+
+### Outliner
+- **Alt-click an eye to solo** that object or group. Alt-click it again to restore the previous visibility.
+- **Hide Everything Except Selection (I)** also works in Animate mode.
+
+### Painting and 2D editor
+- **Select Face Pixels:** selects the texture pixels of the selected faces, so adjustments only affect those faces.
+- **Selection outlines in Paint mode** can be toggled from the paint toolbar.
+- **Scroll to zoom** in the 2D editor without holding Ctrl (Shift scrolls instead).
+
+### Animation
+- **Seamless loops:** looping animations in the generic format carry motion across the loop point, so bones don't stop there. Smooth and bezier curves wrap around, and a bone doesn't need keyframes at the start and end.
+- **Arrow keys move keyframes around the loop:** keyframes pushed past the end come back in at the start, which makes delaying a bone by a few frames easy.
+- **Better IK:**
+  - The whole chain bends on one consistent hinge, so the shin no longer twists differently from the thigh.
+  - **IK Pole Angle** rotates the bend plane, and **IK Hinge Axis** picks the axis the chain bends around. The front of the chain faces the pole.
+  - **IK Weight** is a keyframe channel on the null object (0 to 1) that blends between IK and the keyframed (FK) pose.
+  - IK settings can be edited in the Element panel in Animate mode.
+  - Exports and Bake IK Animation match the preview, including the blend with keyframed rotations.
+
+### Interface
+- **Menus run the entry the mouse is released over**, like native menus, so press-drag-release and right-button release work.
+- **Docked panels show on their own** while the panel they're docked to is hidden, for example in a mode it doesn't support.
+
+
+## About Blockbench
+
 Blockbench is a free and open source model editor for low-poly models with pixel art textures.
 Models can be exported into standardized formats, to be shared, rendered, 3D-printed, or used in game engines. There are also multiple dedicated formats for Minecraft Java and Bedrock Edition with format-specific features. 
 
