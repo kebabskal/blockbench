@@ -749,7 +749,11 @@ BARS.defineActions(function() {
 				add_group = undefined;
 			}
 
-			if (lowest_selected.length >= 2 && add_group) {
+			// A single selected element gets wrapped too; a single selected group gets a new subgroup instead
+			let wrap_single = lowest_selected.length == 1 && add_group && !(add_group instanceof Group)
+				&& add_group.getTypeBehavior('parent_types')?.includes('group') != false;
+
+			if ((lowest_selected.length >= 2 || wrap_single) && add_group) {
 				base_group.sortInBefore(add_group, 1);
 				lowest_selected.forEach((s) => {
 					s.addTo(base_group)
