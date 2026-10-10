@@ -297,6 +297,7 @@ export class ModelProject {
 				orthographic: preview.isOrtho,
 				zoom: preview.camOrtho.zoom,
 				angle: preview.angle,
+				fov: preview.camPers.fov,
 			}
 		})
 
@@ -316,6 +317,11 @@ export class ModelProject {
 				preview.setProjectionMode(data.orthographic);
 				if (data.zoom) preview.camOrtho.zoom = data.zoom;
 				if (data.angle) preview.setLockedAngle(data.angle);
+				if (data.fov) {
+					preview.setFOV(data.fov);
+				} else if (!preview.offscreen) {
+					preview.setFOV(settings.fov.value as number);
+				}
 			} else if (preview.default_angle !== undefined) {
 				preview.loadAnglePreset(preview.default_angle);
 			}

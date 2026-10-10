@@ -2104,6 +2104,33 @@ Preview.prototype.menu = new Menu([
 	{icon: (preview) => (preview.isOrtho ? 'check_box' : 'check_box_outline_blank'), name: 'menu.preview.orthographic', click: function(preview) {
 		preview.setProjectionMode(!preview.isOrtho, true);
 	}},
+	{icon: 'camera', name: 'menu.preview.fov', condition(preview) {return !preview.isOrtho}, click(preview) {
+		let original_fov = preview.camPers.fov;
+		new Dialog({
+			id: 'preview_fov',
+			title: 'menu.preview.fov',
+			width: 400,
+			form: {
+				fov: {label: 'settings.fov', type: 'range', value: original_fov, min: 1, max: 120, step: 1, editable_range_label: true, full_width: true},
+				set_default: {label: 'dialog.preview_fov.set_default', type: 'checkbox', value: false},
+			},
+			onFormChange({fov}) {
+				preview.setFOV(fov);
+			},
+			onConfirm({fov, set_default}) {
+				preview.setFOV(fov);
+				if (set_default) {
+					settings.fov.set(fov);
+					Settings.save();
+				}
+				// Stored with the camera, so it's saved in the project
+				Project?.saveEditorState();
+			},
+			onCancel() {
+				preview.setFOV(original_fov);
+			}
+		}).show();
+	}},
 	new MenuSeparator('interface'),
 	'split_screen',
 	{icon: 'fullscreen', name: 'menu.preview.maximize', condition: function(preview) {return Preview.split_screen.enabled && !ReferenceImageMode.active && !Modes.display}, click: function(preview) {
