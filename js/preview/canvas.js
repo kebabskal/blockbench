@@ -430,6 +430,8 @@ export const Canvas = {
 	},
 	// Element under the cursor in the viewport
 	hovered_element: null,
+	// True while a viewport renders without gizmos and selection helpers, see Preview.render()
+	clean_view: false,
 	/**
 	 * Whether the element is selected as a whole, rather than its vertices, edges or faces
 	 */

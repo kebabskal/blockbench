@@ -641,7 +641,7 @@ function renderQuad(renderer: THREE.WebGLRenderer, material: THREE.Material, tar
  * Elements to outline for the "outline" element highlight mode
  */
 function getHighlightedElements(): {element: OutlinerElement, channel: 'selected' | 'hovered'}[] {
-	if (!Modes.edit) return [];
+	if (!Modes.edit || Canvas.clean_view) return [];
 	let result = [];
 	for (let element of Outliner.selected) {
 		if (element.mesh && element.visibility !== false && Canvas.outlinesSelection(element)) {

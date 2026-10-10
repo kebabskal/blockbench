@@ -142,6 +142,7 @@ function setupSettings() {
 	new Setting('volume', 							{category: 'preview', value: 80, min: 0, max: 200, type: 'number'});
 	new Setting('audio_scrubbing',					{category: 'preview', value: true});
 	new Setting('save_view_per_tab',				{category: 'preview', value: true});
+	new Setting('clean_navigation',					{category: 'preview', value: true});
 	// Viewport effects, see preview/viewport_effects.ts
 	new Setting('preview_shadows', 					{category: 'preview', value: 'off', type: 'select', options: {
 		off: tl('settings.preview_shadows.off'),

@@ -736,14 +736,29 @@ export class Preview {
 	}
 	render() {
 		this.controls.update();
+		// Clean view: hide gizmos, grids and selection helpers while the camera is being moved
+		if (settings.clean_navigation.value && this.controls.isNavigating?.() && this.controls.hasMoved) {
+			Canvas.withoutGizmos(() => {
+				Canvas.clean_view = true;
+				try {
+					this.renderWithEffects();
+				} finally {
+					Canvas.clean_view = false;
+				}
+			});
+		} else {
+			this.renderWithEffects();
+		}
+		if (this.css_renderer) {
+			this.css_renderer.render(Canvas.scene, this.camera, this == Preview.selected);
+		}
+	}
+	renderWithEffects() {
 		if (ViewportEffects.isActive(this)) {
 			let ground_y = three_grid.getWorldPosition(Reusable.vec3).y;
 			ViewportEffects.render(this, () => this.renderScene(), ground_y);
 		} else {
 			this.renderScene();
-		}
-		if (this.css_renderer) {
-			this.css_renderer.render(Canvas.scene, this.camera, this == Preview.selected);
 		}
 	}
 	renderScene() {
@@ -2141,7 +2156,7 @@ StateMemory.init('viewport_background_color', 'string');
 // Viewport whose options are being edited
 let view_options_preview: Preview = null;
 const EFFECT_SETTINGS = [
-	'element_highlight', 'selection_display',
+	'element_highlight', 'selection_display', 'clean_navigation',
 	'preview_shadows', 'preview_shadow_strength', 'preview_shadow_softness', 'preview_light_direction', 'preview_light_height', 'preview_ground_shadow',
 	'preview_ssao', 'preview_ssao_radius', 'preview_ssao_strength',
 	'preview_cavity', 'preview_cavity_ridge', 'preview_cavity_valley',
@@ -2208,6 +2223,7 @@ export const ViewOptionsDialog = new ConfigDialog('preview_view_options', {
 		painting_grid: { label: 'settings.painting_grid', condition: () => Modes.paint, type: 'checkbox', style: 'toggle_switch' },
 		show_element_markers: { label: 'dialog.preview_options.show_element_markers', type: 'checkbox', style: 'toggle_switch', value: true, description: 'dialog.preview_options.show_element_markers.desc' },
 		show_gizmos: { label: 'dialog.preview_options.show_gizmos', type: 'checkbox', style: 'toggle_switch', value: true },
+		clean_navigation: {label: 'settings.clean_navigation', type: 'checkbox', style: 'toggle_switch', description: 'settings.clean_navigation.desc'},
 		element_highlight: {label: 'settings.element_highlight', type: 'inline_select', options: {
 			off: 'settings.element_highlight.off',
 			tint: 'settings.element_highlight.tint',
