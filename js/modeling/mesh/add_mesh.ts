@@ -45,7 +45,7 @@ BARS.defineActions(function() {
 		onConfirm(result: AddMeshFormResult) {
 			let original_selection_group = Group.first_selected && Group.first_selected.uuid;
 			let iteration = 0;
-			const color = Math.floor(Math.random()*markerColors.length);
+			const color = getDefaultMarkerColor();
 			let parent = getCurrentGroup() ?? Armature.selected[0];
 
 			function runEdit(amended: boolean, result: AddMeshFormResult) {

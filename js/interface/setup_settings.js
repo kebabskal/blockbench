@@ -193,6 +193,10 @@ function setupSettings() {
 
 	//Edit
 	new Setting('undo_selections',			{category: 'edit', value: false});
+	new Setting('new_element_marker_color',	{category: 'edit', value: 'prototype', type: 'select', options: {
+		prototype: tl('cube.color.prototype'),
+		random: tl('settings.new_element_marker_color.random'),
+	}});
 	new Setting('undo_limit',				{category: 'edit', value: 256, type: 'number', min: 1});
 	// How the element under the cursor is highlighted in the viewport. "outline" is drawn by viewport_effects.ts
 	new Setting('element_highlight',		{category: 'edit', value: 'outline', type: 'select', options: {

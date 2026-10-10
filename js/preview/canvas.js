@@ -177,6 +177,8 @@ export const Canvas = {
 				base: {value: new THREE.Color().set(color.pastel)},
 				...Canvas.prototype_uniforms,
 			}
+			// The prototype marker color always shows the grid
+			if (color.prototype) commonUniforms.PROTOTYPE = {value: true};
 
 			// Empty texture materials
 			Canvas.emptyMaterials[i] = new THREE.ShaderMaterial({

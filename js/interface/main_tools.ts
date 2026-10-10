@@ -206,7 +206,7 @@ BARS.defineActions(() => {
 		category: 'edit',
 		condition: {modes: ['edit' ], project: true},
 		click: function() {
-			let randomColor = function() { return Math.floor(Math.random() * markerColors.length)}
+			let randomColor = getRandomMarkerColor;
 			let elements = Outliner.selected.filter(element => element.getTypeBehavior('marker_color'))
 			Undo.initEdit({outliner: true, elements: elements, selection: true, groups: Group.all.filter(g => g.selected)})
 			Group.all.forEach(group => {

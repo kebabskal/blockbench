@@ -251,7 +251,7 @@ export class SplineMesh extends OutlinerElement {
         for (var key in SplineMesh.properties) {
             SplineMesh.properties[key].reset(this);
         }
-		this.color = Math.floor(Math.random()*markerColors.length);
+		this.color = getDefaultMarkerColor();
 
         if (data && typeof data === 'object') {
             this.extend(data)

@@ -106,7 +106,7 @@ BARS.defineActions(function() {
 		onConfirm(result) {
 			let original_selection_group = Group.first_selected && Group.first_selected.uuid;
 			let iteration = 0;
-			const color = Math.floor(Math.random()*markerColors.length);
+			const color = getDefaultMarkerColor();
 
 			function runEdit(amended, result) {
 				let elements = [];

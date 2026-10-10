@@ -1135,6 +1135,9 @@
 	"settings.tone_mapping.desc": "Approximation method for displaying high dynamic range on a standard screen for PBR rendering.",
 	"settings.fov": "FOV",
 	"settings.fov.desc": "Camera Field of View. Default is 45",
+	"settings.new_element_marker_color": "New Element Marker Color",
+	"settings.new_element_marker_color.desc": "Marker color of newly added elements. Prototype shows them with the prototype grid",
+	"settings.new_element_marker_color.random": "Random",
 	"settings.preview_prototype": "Prototype Grid",
 	"settings.preview_prototype.desc": "Show elements without a texture with a gray checker grid instead of their marker colors, for a calmer look at blockouts",
 	"settings.preview_prototype_color": "Grid Color",
@@ -2804,6 +2807,7 @@
 	"cube.color.lime": "Lime",
 	"cube.color.pink": "Pink",
 	"cube.color.silver": "Silver",
+	"cube.color.prototype": "Prototype",
 
 	"mesh.shading": "Shading",
 	"mesh.shading.flat": "Flat",
