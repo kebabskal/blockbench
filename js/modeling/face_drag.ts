@@ -63,6 +63,9 @@ type DragState = {
 
 let drag: DragState | null = null;
 let highlight: THREE.Object3D | null = null;
+// Cube that the highlight is attached to
+let highlight_cube: Cube | null = null;
+let refresh_scheduled = false;
 let cursor_mode: string | null = null;
 
 function getRay(preview: Preview, event: MouseEvent): THREE.Ray {
@@ -168,6 +171,7 @@ function findEdge(data: RaycastResult): EdgeHit | null {
 
 function addHighlight(cube: Cube, object: THREE.Object3D) {
 	highlight = object;
+	highlight_cube = cube;
 	// Overlays aren't geometry, so they shouldn't cast AO, cavity or outlines
 	// @ts-expect-error
 	highlight.exclude_from_effects = true;
@@ -240,6 +244,7 @@ function removeHighlight() {
 	})
 	materials.forEach(material => material.dispose());
 	highlight = null;
+	highlight_cube = null;
 }
 
 const CURSORS = {move: 'move', move_normal: 'ns-resize', resize: 'ns-resize', rotate: 'grab', rotating: 'grabbing'};
@@ -605,6 +610,55 @@ function onDragKey(event: KeyboardEvent) {
 	}
 }
 
+function getPreviewAtMouse(): Preview | undefined {
+	return Preview.all.find(preview => {
+		if (!preview.canvas?.isConnected || !preview.canvas.offsetParent) return false;
+		let rect = preview.canvas.getBoundingClientRect();
+		return mouse_pos.x >= rect.left && mouse_pos.x <= rect.right && mouse_pos.y >= rect.top && mouse_pos.y <= rect.bottom;
+	});
+}
+/**
+ * Stand-in for a mouse event at the last known mouse position, for when the scene changes without the mouse moving
+ */
+function getMouseEvent(): MouseEvent {
+	return {clientX: mouse_pos.x, clientY: mouse_pos.y, shiftKey: Pressing.shift, altKey: Pressing.alt, ctrlKey: Pressing.ctrl} as MouseEvent;
+}
+
+function updateHover(data: RaycastResult | false) {
+	if (drag) return;
+	if (data && data.type == 'element' && data.element instanceof Cube && FACE_AXES[data.face] && !data.element.locked) {
+		let edge = findEdge(data);
+		if (edge) {
+			showEdgeHandle(edge);
+			setCursor('rotate');
+		} else {
+			showHighlight(data.element, data.face);
+			setCursor(getFaceMode(data.event as MouseEvent));
+		}
+	} else {
+		removeHighlight();
+		setCursor(null);
+	}
+}
+/**
+ * The highlight is built in the cube's local space, so rebuild it when the cube changes under a still mouse,
+ * for example when its pivot is moved, or on undo
+ */
+function scheduleHoverRefresh() {
+	if (refresh_scheduled) return;
+	refresh_scheduled = true;
+	requestAnimationFrame(() => {
+		refresh_scheduled = false;
+		if (drag || !highlight) return;
+		if (Toolbox.selected.id != 'face_drag_tool') {
+			removeHighlight();
+			return;
+		}
+		let preview = getPreviewAtMouse();
+		updateHover(preview ? preview.raycast(getMouseEvent()) : false);
+	})
+}
+
 type PivotTarget = {
 	type: 'corner' | 'edge' | 'face'
 	world: THREE.Vector3
@@ -613,13 +667,9 @@ type PivotTarget = {
  * Find the corner, edge middle or face center of the cube face under the mouse
  */
 function getPivotTargetAtMouse(): {cube: Cube, target: PivotTarget} | null {
-	let preview = Preview.all.find(preview => {
-		if (!preview.canvas?.isConnected || !preview.canvas.offsetParent) return false;
-		let rect = preview.canvas.getBoundingClientRect();
-		return mouse_pos.x >= rect.left && mouse_pos.x <= rect.right && mouse_pos.y >= rect.top && mouse_pos.y <= rect.bottom;
-	});
+	let preview = getPreviewAtMouse();
 	if (!preview) return null;
-	let event = {clientX: mouse_pos.x, clientY: mouse_pos.y} as MouseEvent;
+	let event = getMouseEvent();
 	let data = preview.raycast(event);
 	if (!data || data.type != 'element' || !(data.element instanceof Cube) || !FACE_AXES[data.face]) return null;
 
@@ -665,6 +715,9 @@ function getPivotTargetAtMouse(): {cube: Cube, target: PivotTarget} | null {
 }
 
 BARS.defineActions(function() {
+	Cube.preview_controller.on('update_transform update_geometry', ({element}) => {
+		if (element === highlight_cube && !drag) scheduleHoverRefresh();
+	})
 	new Action('set_pivot_at_cursor', {
 		icon: 'gps_fixed',
 		category: 'transform',
@@ -717,20 +770,7 @@ BARS.defineActions(function() {
 			}
 		},
 		onCanvasMouseMove(data) {
-			if (drag) return;
-			if (data && data.type == 'element' && data.element instanceof Cube && FACE_AXES[data.face] && !data.element.locked) {
-				let edge = findEdge(data);
-				if (edge) {
-					showEdgeHandle(edge);
-					setCursor('rotate');
-				} else {
-					showHighlight(data.element, data.face);
-					setCursor(getFaceMode(data.event as MouseEvent));
-				}
-			} else {
-				removeHighlight();
-				setCursor(null);
-			}
+			updateHover(data);
 		},
 		onSelect() {
 			Interface.addSuggestedModifierKey('shift', 'modifier_actions.push_pull_face');
