@@ -1,4 +1,4 @@
-import { canvasGridSize } from "../misc";
+import { canvasGridSize, mouse_pos } from "../misc";
 import { getRotationInterval } from "./transform";
 import { adjustFromAndToForInflateAndStretch } from "../outliner/types/cube";
 import { Preview, type RaycastResult } from "../preview/preview";
@@ -19,6 +19,8 @@ const FACE_AXES: Record<string, [number, 1 | -1]> = {
 const AXIS_LETTERS = ['x', 'y', 'z'] as const;
 // How close the mouse has to be to an edge to grab it, in pixels
 const EDGE_GRAB_DISTANCE = 12;
+// How close the mouse has to be to a corner to put the pivot there, in pixels
+const CORNER_SNAP_DISTANCE = 16;
 
 type DragMode = 'move' | 'move_normal' | 'resize' | 'rotate';
 type EdgeHit = {
@@ -603,7 +605,95 @@ function onDragKey(event: KeyboardEvent) {
 	}
 }
 
+type PivotTarget = {
+	type: 'corner' | 'edge' | 'face'
+	world: THREE.Vector3
+}
+/**
+ * Find the corner, edge middle or face center of the cube face under the mouse
+ */
+function getPivotTargetAtMouse(): {cube: Cube, target: PivotTarget} | null {
+	let preview = Preview.all.find(preview => {
+		if (!preview.canvas?.isConnected || !preview.canvas.offsetParent) return false;
+		let rect = preview.canvas.getBoundingClientRect();
+		return mouse_pos.x >= rect.left && mouse_pos.x <= rect.right && mouse_pos.y >= rect.top && mouse_pos.y <= rect.bottom;
+	});
+	if (!preview) return null;
+	let event = {clientX: mouse_pos.x, clientY: mouse_pos.y} as MouseEvent;
+	let data = preview.raycast(event);
+	if (!data || data.type != 'element' || !(data.element instanceof Cube) || !FACE_AXES[data.face]) return null;
+
+	let cube = data.element;
+	let mesh = cube.mesh;
+	mesh.updateMatrixWorld();
+	let [axis, direction] = FACE_AXES[data.face];
+	let [low, high] = getLocalBox(cube);
+	let level = direction == 1 ? high[axis] : low[axis];
+	let [b, c] = [0, 1, 2].filter(i => i != axis);
+	let local = (vb: number, vc: number) => {
+		let vec = new THREE.Vector3();
+		vec.setComponent(axis, level);
+		vec.setComponent(b, vb);
+		vec.setComponent(c, vc);
+		return mesh.localToWorld(vec);
+	}
+	let corners = [local(low[b], low[c]), local(high[b], low[c]), local(high[b], high[c]), local(low[b], high[c])];
+	let screen_corners = corners.map(corner => toScreen(preview, corner));
+	let mouse = getMouseOnCanvas(preview, event);
+	// On small faces, leave room for the edges and the center
+	let face_span = Math.min(screen_corners[0].distanceTo(screen_corners[1]), screen_corners[1].distanceTo(screen_corners[2]));
+
+	let corner_index = screen_corners.findIndex(corner => corner.distanceTo(mouse) < Math.min(CORNER_SNAP_DISTANCE, face_span * 0.3));
+	if (corner_index != -1) {
+		return {cube, target: {type: 'corner', world: corners[corner_index]}};
+	}
+	let edge_threshold = Math.min(EDGE_GRAB_DISTANCE, face_span * 0.2);
+	let closest_edge = -1;
+	let closest_distance = edge_threshold;
+	for (let i = 0; i < 4; i++) {
+		let distance = distanceToSegment(mouse, screen_corners[i], screen_corners[(i+1) % 4]);
+		if (distance < closest_distance) {
+			closest_distance = distance;
+			closest_edge = i;
+		}
+	}
+	if (closest_edge != -1) {
+		let middle = corners[closest_edge].clone().add(corners[(closest_edge+1) % 4]).multiplyScalar(0.5);
+		return {cube, target: {type: 'edge', world: middle}};
+	}
+	return {cube, target: {type: 'face', world: local((low[b] + high[b]) / 2, (low[c] + high[c]) / 2)}};
+}
+
 BARS.defineActions(function() {
+	new Action('set_pivot_at_cursor', {
+		icon: 'gps_fixed',
+		category: 'transform',
+		condition: {modes: ['edit'], project: true},
+		keybind: new Keybind({key: 'c'}),
+		click() {
+			let result = getPivotTargetAtMouse();
+			if (!result) {
+				Blockbench.showQuickMessage('message.set_pivot_at_cursor.no_face');
+				return;
+			}
+			let {cube, target} = result;
+			// Grabbing a selected cube sets the pivot of the whole selection to the same point
+			let elements = (cube.selected ? Cube.selected : [cube]).filter(el => !el.locked);
+			Undo.initEdit({elements});
+			for (let el of elements) {
+				let parent = el.mesh.parent;
+				parent.updateMatrixWorld();
+				let parent_origin = el.parent instanceof Group ? el.parent.origin : [0, 0, 0];
+				let origin = parent.worldToLocal(target.world.clone()).add(new THREE.Vector3().fromArray(parent_origin));
+				el.transferOrigin(origin.toArray().map(v => Math.roundTo(v, 4)) as ArrayVector3);
+			}
+			Canvas.updateView({elements, element_aspects: {transform: true, geometry: true}, selection: true});
+			updateSelection();
+			Undo.finishEdit('Set pivot at cursor');
+			Blockbench.showQuickMessage('message.set_pivot_at_cursor.' + target.type);
+		}
+	})
+
 	new Tool('face_drag_tool', {
 		icon: 'touch_app',
 		category: 'tools',

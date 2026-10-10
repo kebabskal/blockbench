@@ -258,6 +258,10 @@
 	"modifier_actions.spline_select_multiple_points": "Select multiple Points or Handles",
 	"modifier_actions.move_panel_without_docking": "Move without docking",
 
+	"message.set_pivot_at_cursor.no_face": "Hover over a cube face to set the pivot",
+	"message.set_pivot_at_cursor.corner": "Pivot set to corner",
+	"message.set_pivot_at_cursor.edge": "Pivot set to edge center",
+	"message.set_pivot_at_cursor.face": "Pivot set to face center",
 	"message.canvas_limit_error.title": "Canvas Limit Error",
 	"message.canvas_limit_error.message": "The action could not be performed correctly because the format limits the canvas to 48 units. Shift the pivot point to prevent this.",
 	"message.rotation_limit.title": "Rotation Limits",
@@ -1666,6 +1670,8 @@
 
 	"action.vertex_snap_tool": "Vertex Snap",
 	"action.vertex_snap_tool.desc": "Move one cube to another cube by connecting two vertices",
+	"action.set_pivot_at_cursor": "Set Pivot at Cursor",
+	"action.set_pivot_at_cursor.desc": "Put the pivot of the cube under the mouse on the nearest corner, the middle of the nearest edge or the center of the face",
 	"action.face_drag_tool": "Face Drag",
 	"action.face_drag_tool.desc": "Drag a cube face to move the cube along it, with Alt along its normal, or with Shift to push or pull the face. Drag an edge to rotate the cube",
 	"action.swap_tools": "Swap Tools",
