@@ -70,6 +70,10 @@ export interface FormElementOptions {
 	text?: string
 	condition?: ConditionResolvable
 	/**
+	 * Consecutive inputs with the same group are shown together in a panel, which slides open while any of them is visible
+	 */
+	group?: string
+	/**
 	 * When using 'range' type, allow users to modify the numeric input
 	 */
 	editable_range_label?: boolean
@@ -175,6 +179,7 @@ export class InputForm extends EventSystem {
 	node: HTMLDivElement
 	max_label_width: number
 	uses_wide_inputs: boolean
+	groups: Record<string, {node: HTMLElement, form_ids: string[]}>
 
 	constructor(form_config: InputFormConfig, options = {}) {
 		super();
@@ -192,10 +197,13 @@ export class InputForm extends EventSystem {
 		let jq_node = $(this.node);
 		this.deleteFormElements();
 		jq_node.empty();
+		this.groups = {};
+		let current_group: {node: HTMLElement, content: HTMLElement, id: string} = null;
 		for (let form_id in this.form_config) {
 			let input_config = this.form_config[form_id];
 			form_id = form_id.replace(/"/g, '');
 			if (input_config === '_') {
+				current_group = null;
 				jq_node.append('<hr />');
 				continue;
 			}
@@ -205,7 +213,25 @@ export class InputForm extends EventSystem {
 			form_element.build(bar);
 			form_element.setup();
 			if (form_element.uses_wide_inputs) this.uses_wide_inputs = true;
-			jq_node.append(bar);
+
+			let group_id = typeof input_config == 'object' && input_config.group;
+			if (group_id) {
+				if (current_group?.id != group_id) {
+					// Panel > clipping wrapper > content, so the panel can animate its height from 0
+					let content = Interface.createElement('div', {class: 'form_group_content'});
+					let node = Interface.createElement('div', {class: `form_group form_group_${group_id}`},
+						Interface.createElement('div', {class: 'form_group_inner'}, content)
+					);
+					current_group = {node, content, id: group_id};
+					this.groups[group_id] = {node, form_ids: []};
+					jq_node.append(node);
+				}
+				this.groups[group_id].form_ids.push(form_id);
+				current_group.content.append(bar);
+			} else {
+				current_group = null;
+				jq_node.append(bar);
+			}
 		}
 		this.updateLabelWidth();
 	}
@@ -234,13 +260,26 @@ export class InputForm extends EventSystem {
 		this.node.style.setProperty('--max_label_width', this.max_label_width+'px');
 	}
 	update(form_result: FormValues) {
+		let group_visibility: Record<string, boolean> = {};
+		for (let group_id in this.groups ?? {}) {
+			group_visibility[group_id] = this.groups[group_id].form_ids.some(form_id => {
+				return Condition(this.form_config[form_id].condition, form_result);
+			});
+		}
 		for (let form_id in this.form_config) {
 			let form_element = this.form_data[form_id];
 			let input_config = this.form_config[form_id];
 			if (typeof input_config == 'object' && form_element.bar) {
+				// Inputs in a closing group stay as they are, so the group can slide closed with them
+				if (input_config.group && group_visibility[input_config.group] === false) continue;
 				let show = Condition(input_config.condition, form_result);
 				form_element.bar.style.display = show ? null : 'none';
 			}
+		}
+		for (let group_id in group_visibility) {
+			let node = this.groups[group_id].node;
+			node.classList.toggle('open', group_visibility[group_id]);
+			node.toggleAttribute('inert', !group_visibility[group_id]);
 		}
 	}
 	updateValues(context: {cause?: string, changed_keys?: string[]} = {}) {

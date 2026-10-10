@@ -186,6 +186,36 @@
 		display: flex;
 		align-items: center;
 	}
+	/* Groups of related form inputs, sliding open while any input in them is visible */
+	.form_group {
+		display: grid;
+		grid-template-rows: 0fr;
+		opacity: 0;
+		transition: grid-template-rows 200ms ease, opacity 200ms ease;
+	}
+	.form_group.open {
+		grid-template-rows: 1fr;
+		opacity: 1;
+	}
+	.form_group > .form_group_inner {
+		overflow: hidden;
+		min-height: 0;
+	}
+	.form_group_content {
+		margin: 2px 0 8px 6px;
+		padding: 2px 8px;
+		background-color: var(--color-back);
+		border-left: 2px solid var(--color-accent);
+		border-radius: 2px 6px 6px 2px;
+	}
+	.form_group_content > .dialog_bar.form_bar:first-child {
+		margin-top: 2px;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.form_group {
+			transition: none;
+		}
+	}
 	label.name_space_left {
 		float: left;
 		min-width: 90px;

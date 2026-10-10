@@ -2144,8 +2144,8 @@ const EFFECT_SETTINGS = [
 	'preview_cavity', 'preview_cavity_ridge', 'preview_cavity_valley',
 	'preview_outline', 'preview_outline_color', 'preview_outline_width', 'preview_outline_opacity', 'preview_outline_creases',
 ];
-function effectRange(id: string, min: number, max: number, step: number, condition: (result: PreviewOptionsFormResult) => boolean) {
-	return {label: 'settings.' + id, type: 'range', min, max, step, editable_range_label: true, full_width: true, condition};
+function effectRange(id: string, group: string, min: number, max: number, step: number, condition: (result: PreviewOptionsFormResult) => boolean) {
+	return {label: 'settings.' + id, type: 'range', group, min, max, step, editable_range_label: true, full_width: true, condition};
 }
 interface PreviewOptionsFormResult {
 	background: string
@@ -2197,6 +2197,7 @@ export const ViewOptionsDialog = new ConfigDialog('preview_view_options', {
 			}
 		},
 		fov: {label: 'settings.fov', type: 'range', min: 1, max: 120, step: 1, editable_range_label: true, full_width: true, condition: () => view_options_preview && !view_options_preview.isOrtho},
+		_display: '_',
 		shading: { label: 'settings.shading', type: 'checkbox', style: 'toggle_switch' },
 		grids: { label: 'settings.grids', type: 'checkbox', style: 'toggle_switch' },
 		ground_plane: { label: 'settings.ground_plane', type: 'checkbox', style: 'toggle_switch' },
@@ -2211,22 +2212,25 @@ export const ViewOptionsDialog = new ConfigDialog('preview_view_options', {
 			hard: 'settings.preview_shadows.hard',
 			soft: 'settings.preview_shadows.soft',
 		}},
-		preview_shadow_strength: effectRange('preview_shadow_strength', 0, 100, 1, result => result.preview_shadows != 'off'),
-		preview_shadow_softness: effectRange('preview_shadow_softness', 1, 100, 1, result => result.preview_shadows == 'soft'),
-		preview_light_direction: effectRange('preview_light_direction', 0, 360, 1, result => result.preview_shadows != 'off'),
-		preview_light_height: effectRange('preview_light_height', 5, 90, 1, result => result.preview_shadows != 'off'),
-		preview_ground_shadow: {label: 'settings.preview_ground_shadow', type: 'checkbox', style: 'toggle_switch', condition: result => result.preview_shadows != 'off'},
+		preview_shadow_strength: effectRange('preview_shadow_strength', 'shadows', 0, 100, 1, result => result.preview_shadows != 'off'),
+		preview_shadow_softness: effectRange('preview_shadow_softness', 'shadows', 1, 100, 1, result => result.preview_shadows == 'soft'),
+		preview_light_direction: effectRange('preview_light_direction', 'shadows', 0, 360, 1, result => result.preview_shadows != 'off'),
+		preview_light_height: effectRange('preview_light_height', 'shadows', 5, 90, 1, result => result.preview_shadows != 'off'),
+		preview_ground_shadow: {label: 'settings.preview_ground_shadow', type: 'checkbox', style: 'toggle_switch', group: 'shadows', condition: result => result.preview_shadows != 'off'},
+		_ssao: '_',
 		preview_ssao: {label: 'settings.preview_ssao', type: 'checkbox', style: 'toggle_switch'},
-		preview_ssao_radius: effectRange('preview_ssao_radius', 0.5, 64, 0.5, result => result.preview_ssao),
-		preview_ssao_strength: effectRange('preview_ssao_strength', 0, 200, 1, result => result.preview_ssao),
+		preview_ssao_radius: effectRange('preview_ssao_radius', 'ssao', 0.5, 64, 0.5, result => result.preview_ssao),
+		preview_ssao_strength: effectRange('preview_ssao_strength', 'ssao', 0, 200, 1, result => result.preview_ssao),
+		_cavity: '_',
 		preview_cavity: {label: 'settings.preview_cavity', type: 'checkbox', style: 'toggle_switch'},
-		preview_cavity_ridge: effectRange('preview_cavity_ridge', 0, 200, 1, result => result.preview_cavity),
-		preview_cavity_valley: effectRange('preview_cavity_valley', 0, 200, 1, result => result.preview_cavity),
+		preview_cavity_ridge: effectRange('preview_cavity_ridge', 'cavity', 0, 200, 1, result => result.preview_cavity),
+		preview_cavity_valley: effectRange('preview_cavity_valley', 'cavity', 0, 200, 1, result => result.preview_cavity),
+		_outline: '_',
 		preview_outline: {label: 'settings.preview_outline', type: 'checkbox', style: 'toggle_switch'},
-		preview_outline_color: {label: 'settings.preview_outline_color', type: 'color', condition: result => result.preview_outline},
-		preview_outline_width: effectRange('preview_outline_width', 0.5, 10, 0.5, result => result.preview_outline),
-		preview_outline_opacity: effectRange('preview_outline_opacity', 0, 100, 1, result => result.preview_outline),
-		preview_outline_creases: {label: 'settings.preview_outline_creases', type: 'checkbox', style: 'toggle_switch', condition: result => result.preview_outline},
+		preview_outline_color: {label: 'settings.preview_outline_color', type: 'color', group: 'outline', condition: result => result.preview_outline},
+		preview_outline_width: effectRange('preview_outline_width', 'outline', 0.5, 10, 0.5, result => result.preview_outline),
+		preview_outline_opacity: effectRange('preview_outline_opacity', 'outline', 0, 100, 1, result => result.preview_outline),
+		preview_outline_creases: {label: 'settings.preview_outline_creases', type: 'checkbox', style: 'toggle_switch', group: 'outline', condition: result => result.preview_outline},
 	},
 	onOpen() {
 		let custom_color = StateMemory.get('viewport_background_color');
