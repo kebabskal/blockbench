@@ -302,6 +302,7 @@ export class Preview {
 			this.menu.open(menu, this);
 		}
 		(menu.querySelector('.preview_view_options') as HTMLElement).onclick = (event) => {
+			view_options_preview = this;
 			ViewOptionsDialog.show(menu);
 			let preview_rect = Interface.preview.getBoundingClientRect();
 			ViewOptionsDialog.object.style.left = 'auto';
@@ -2113,87 +2114,6 @@ Preview.prototype.menu = new Menu([
 	{icon: (preview) => (preview.isOrtho ? 'check_box' : 'check_box_outline_blank'), name: 'menu.preview.orthographic', click: function(preview) {
 		preview.setProjectionMode(!preview.isOrtho, true);
 	}},
-	{icon: 'camera', name: 'menu.preview.fov', condition(preview) {return !preview.isOrtho}, click(preview) {
-		let original_fov = preview.camPers.fov;
-		new Dialog({
-			id: 'preview_fov',
-			title: 'menu.preview.fov',
-			width: 400,
-			form: {
-				fov: {label: 'settings.fov', type: 'range', value: original_fov, min: 1, max: 120, step: 1, editable_range_label: true, full_width: true},
-				set_default: {label: 'dialog.preview_fov.set_default', type: 'checkbox', value: false},
-			},
-			onFormChange({fov}) {
-				preview.setFOV(fov);
-			},
-			onConfirm({fov, set_default}) {
-				preview.setFOV(fov);
-				if (set_default) {
-					settings.fov.set(fov);
-					Settings.save();
-				}
-				// Stored with the camera, so it's saved in the project
-				Project?.saveEditorState();
-			},
-			onCancel() {
-				preview.setFOV(original_fov);
-			}
-		}).show();
-	}},
-	{icon: 'wb_sunny', name: 'menu.preview.effects', click(preview) {
-		const setting_ids = [
-			'preview_shadows', 'preview_shadow_strength', 'preview_shadow_softness', 'preview_light_direction', 'preview_light_height', 'preview_ground_shadow',
-			'preview_ssao', 'preview_ssao_radius', 'preview_ssao_strength',
-			'preview_cavity', 'preview_cavity_ridge', 'preview_cavity_valley',
-		];
-		let original_values = {};
-		for (let id of setting_ids) original_values[id] = settings[id].value;
-
-		const range = (id: string, condition?: (result: any) => boolean) => {
-			let setting = settings[id];
-			return {label: 'settings.' + id, type: 'range', value: setting.value, min: setting.min, max: setting.max, step: setting.step || 1, editable_range_label: true, full_width: true, condition};
-		};
-		const shadows_on = result => result.preview_shadows != 'off';
-		new Dialog({
-			id: 'preview_effects',
-			title: 'menu.preview.effects',
-			width: 480,
-			form: {
-				preview_shadows: {label: 'settings.preview_shadows', type: 'inline_select', value: settings.preview_shadows.value, options: {
-					off: 'settings.preview_shadows.off',
-					hard: 'settings.preview_shadows.hard',
-					soft: 'settings.preview_shadows.soft',
-				}},
-				preview_shadow_strength: range('preview_shadow_strength', shadows_on),
-				preview_shadow_softness: range('preview_shadow_softness', result => result.preview_shadows == 'soft'),
-				preview_light_direction: range('preview_light_direction', shadows_on),
-				preview_light_height: range('preview_light_height', shadows_on),
-				preview_ground_shadow: {label: 'settings.preview_ground_shadow', type: 'checkbox', value: settings.preview_ground_shadow.value, condition: shadows_on},
-				_ao: '_',
-				preview_ssao: {label: 'settings.preview_ssao', type: 'checkbox', value: settings.preview_ssao.value},
-				preview_ssao_radius: range('preview_ssao_radius', result => result.preview_ssao),
-				preview_ssao_strength: range('preview_ssao_strength', result => result.preview_ssao),
-				_cavity: '_',
-				preview_cavity: {label: 'settings.preview_cavity', type: 'checkbox', value: settings.preview_cavity.value},
-				preview_cavity_ridge: range('preview_cavity_ridge', result => result.preview_cavity),
-				preview_cavity_valley: range('preview_cavity_valley', result => result.preview_cavity),
-			},
-			onFormChange(result) {
-				for (let id of setting_ids) {
-					if (result[id] !== undefined) settings[id].value = result[id];
-				}
-			},
-			onConfirm(result) {
-				for (let id of setting_ids) {
-					if (result[id] !== undefined) settings[id].set(result[id]);
-				}
-				Settings.save();
-			},
-			onCancel() {
-				for (let id of setting_ids) settings[id].value = original_values[id];
-			}
-		}).show();
-	}},
 	new MenuSeparator('interface'),
 	'split_screen',
 	{icon: 'fullscreen', name: 'menu.preview.maximize', condition: function(preview) {return Preview.split_screen.enabled && !ReferenceImageMode.active && !Modes.display}, click: function(preview) {
@@ -2216,6 +2136,16 @@ Blockbench.on('update_camera_position', e => {
 })
 
 StateMemory.init('viewport_background_color', 'string');
+// Viewport whose options are being edited
+let view_options_preview: Preview = null;
+const EFFECT_SETTINGS = [
+	'preview_shadows', 'preview_shadow_strength', 'preview_shadow_softness', 'preview_light_direction', 'preview_light_height', 'preview_ground_shadow',
+	'preview_ssao', 'preview_ssao_radius', 'preview_ssao_strength',
+	'preview_cavity', 'preview_cavity_ridge', 'preview_cavity_valley',
+];
+function effectRange(id: string, min: number, max: number, step: number, condition: (result: PreviewOptionsFormResult) => boolean) {
+	return {label: 'settings.' + id, type: 'range', min, max, step, editable_range_label: true, full_width: true, condition};
+}
 interface PreviewOptionsFormResult {
 	background: string
 	custom_background_color: any
@@ -2265,6 +2195,7 @@ export const ViewOptionsDialog = new ConfigDialog('preview_view_options', {
 				return result;
 			}
 		},
+		fov: {label: 'settings.fov', type: 'range', min: 1, max: 120, step: 1, editable_range_label: true, full_width: true, condition: () => view_options_preview && !view_options_preview.isOrtho},
 		shading: { label: 'settings.shading', type: 'checkbox', style: 'toggle_switch' },
 		grids: { label: 'settings.grids', type: 'checkbox', style: 'toggle_switch' },
 		ground_plane: { label: 'settings.ground_plane', type: 'checkbox', style: 'toggle_switch' },
@@ -2272,6 +2203,24 @@ export const ViewOptionsDialog = new ConfigDialog('preview_view_options', {
 		painting_grid: { label: 'settings.painting_grid', condition: () => Modes.paint, type: 'checkbox', style: 'toggle_switch' },
 		show_element_markers: { label: 'dialog.preview_options.show_element_markers', type: 'checkbox', style: 'toggle_switch', value: true, description: 'dialog.preview_options.show_element_markers.desc' },
 		show_gizmos: { label: 'dialog.preview_options.show_gizmos', type: 'checkbox', style: 'toggle_switch', value: true },
+		// Lighting & effects, see viewport_effects.ts
+		_effects: '_',
+		preview_shadows: {label: 'settings.preview_shadows', type: 'inline_select', options: {
+			off: 'settings.preview_shadows.off',
+			hard: 'settings.preview_shadows.hard',
+			soft: 'settings.preview_shadows.soft',
+		}},
+		preview_shadow_strength: effectRange('preview_shadow_strength', 0, 100, 1, result => result.preview_shadows != 'off'),
+		preview_shadow_softness: effectRange('preview_shadow_softness', 1, 100, 1, result => result.preview_shadows == 'soft'),
+		preview_light_direction: effectRange('preview_light_direction', 0, 360, 1, result => result.preview_shadows != 'off'),
+		preview_light_height: effectRange('preview_light_height', 5, 90, 1, result => result.preview_shadows != 'off'),
+		preview_ground_shadow: {label: 'settings.preview_ground_shadow', type: 'checkbox', style: 'toggle_switch', condition: result => result.preview_shadows != 'off'},
+		preview_ssao: {label: 'settings.preview_ssao', type: 'checkbox', style: 'toggle_switch'},
+		preview_ssao_radius: effectRange('preview_ssao_radius', 0.5, 64, 0.5, result => result.preview_ssao),
+		preview_ssao_strength: effectRange('preview_ssao_strength', 0, 200, 1, result => result.preview_ssao),
+		preview_cavity: {label: 'settings.preview_cavity', type: 'checkbox', style: 'toggle_switch'},
+		preview_cavity_ridge: effectRange('preview_cavity_ridge', 0, 200, 1, result => result.preview_cavity),
+		preview_cavity_valley: effectRange('preview_cavity_valley', 0, 200, 1, result => result.preview_cavity),
 	},
 	onOpen() {
 		let custom_color = StateMemory.get('viewport_background_color');
@@ -2286,6 +2235,8 @@ export const ViewOptionsDialog = new ConfigDialog('preview_view_options', {
 			painting_grid: settings.painting_grid.value,
 			show_gizmos: Canvas.show_gizmos,
 			show_element_markers: Canvas.show_element_markers,
+			fov: view_options_preview ? view_options_preview.camPers.fov : settings.fov.value,
+			...Object.fromEntries(EFFECT_SETTINGS.map(id => [id, settings[id].value])),
 		});
 	},
 	onFormChange(result: PreviewOptionsFormResult) {
@@ -2334,6 +2285,18 @@ export const ViewOptionsDialog = new ConfigDialog('preview_view_options', {
 			updateSelection();
 			Canvas.updateVisibility();
 		}
+		// The field of view is stored with the viewport's camera, so it's saved in the project
+		if (view_options_preview && result.fov && view_options_preview.camPers.fov != result.fov) {
+			view_options_preview.setFOV(result.fov);
+		}
+		let effects_changed = false;
+		for (let id of EFFECT_SETTINGS) {
+			if (result[id] !== undefined && settings[id].value != result[id]) {
+				settings[id].set(result[id]);
+				effects_changed = true;
+			}
+		}
+		if (effects_changed) Settings.save();
 	}
 });
 

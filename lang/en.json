@@ -776,7 +776,6 @@
 	"dialog.animation_export.title": "Select Animations to Export",
 
 	"dialog.change_animation_speed.speed": "Speed",
-	"dialog.preview_fov.set_default": "Use as Default",
 	"dialog.change_animation_speed.adjust_snapping": "Adjust Snapping",
 	"dialog.optimize_animation.selection": "Selection",
 	"dialog.optimize_animation.selection.selected_keyframes": "Selected Keyframes",
@@ -2607,8 +2606,6 @@
 	"menu.preview.screenshot": "Screenshot",
 
 	"menu.preview.orthographic": "Orthographic",
-	"menu.preview.fov": "Field of View...",
-	"menu.preview.effects": "Lighting & Effects...",
 	"menu.preview.save_angle": "Save Angle...",
 	"menu.preview.angle": "Angles",
 	"menu.preview.angle.initial": "Initial Angle",
