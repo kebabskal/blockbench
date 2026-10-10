@@ -930,8 +930,18 @@ export class NullObjectAnimator extends BoneAnimator {
 				rest_normal = null;
 			} else {
 				rest_normal.normalize();
-				// The axis only picks the hinge, the bend in the default pose decides which way it faces
-				if (rest_bend && rest_normal.dot(rest_bend) < 0) rest_normal.negate();
+				// The axis only picks the hinge. Which way it faces comes from the bend in the default pose if that bend
+				// is clearly around this axis, otherwise from the pole, so the front of the chain faces the pole
+				if (rest_bend && Math.abs(rest_normal.dot(rest_bend)) > 0.5) {
+					if (rest_normal.dot(rest_bend) < 0) rest_normal.negate();
+				} else if (pole) {
+					// Use the default pose positions so an animated pole can't flip the chain around
+					let getRestPosition = node => new THREE.Vector3().fromArray(node instanceof Group || node instanceof ArmatureBone ? node.origin : node.position);
+					let model_pole_normal = getPoleNormal(getRestPosition(bones[0]), getRestPosition(bones[n - 1]), getRestPosition(pole));
+					if (model_pole_normal && new THREE.Vector3().fromArray(axis).dot(model_pole_normal) < 0) {
+						rest_normal.negate();
+					}
+				}
 			}
 		}
 		if (!rest_normal) rest_normal = rest_bend;
