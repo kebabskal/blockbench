@@ -738,14 +738,14 @@ export class Preview {
 		this.controls.update();
 		// Clean view: hide gizmos, grids and selection helpers while the camera is being moved
 		if (settings.clean_navigation.value && this.controls.isNavigating?.() && this.controls.hasMoved) {
-			Canvas.withoutGizmos(() => {
+			Canvas.withoutGizmos(() => Canvas.withoutElementMarkers(() => {
 				Canvas.clean_view = true;
 				try {
 					this.renderWithEffects();
 				} finally {
 					Canvas.clean_view = false;
 				}
-			});
+			}));
 		} else {
 			this.renderWithEffects();
 		}

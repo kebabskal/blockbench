@@ -1277,7 +1277,7 @@
 	"settings.selection_display.outline": "Outline",
 	"settings.selection_display.both": "Both",
 	"settings.clean_navigation": "Clean View While Navigating",
-	"settings.clean_navigation.desc": "Hide gizmos, grids and selection outlines while orbiting, panning or flying the camera, for a clean preview of the model",
+	"settings.clean_navigation.desc": "Hide gizmos, grids, element markers and selection outlines while orbiting, panning or flying the camera, for a clean preview of the model",
 	"settings.outliner_reveal_on_select": "Reveal Elements on Select",
 	"settings.outliner_reveal_on_select.desc": "Reveal elements in the ouliner when selected",
 	"settings.local_position_values": "Local Position Values",

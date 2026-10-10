@@ -478,6 +478,26 @@ export const Canvas = {
 		var canvas = $('.preview canvas:hover').get(0);
 		return canvas ? canvas.preview : Preview.selected;
 	},
+	/**
+	 * Run a callback with element markers (bones, locators, null objects) hidden, like the "Show Element Markers" option does
+	 */
+	withoutElementMarkers(cb) {
+		let hidden = [];
+		const hide = object => {
+			if (object && object.visible) {
+				object.visible = false;
+				hidden.push(object);
+			}
+		};
+		if (typeof ArmatureBone != 'undefined') ArmatureBone.all.forEach(bone => hide(bone.mesh));
+		if (typeof Locator != 'undefined') Locator.all.forEach(locator => hide(locator.mesh?.sprite));
+		if (typeof NullObject != 'undefined') NullObject.all.forEach(null_object => hide(null_object.mesh));
+		try {
+			cb();
+		} finally {
+			hidden.forEach(object => object.visible = true);
+		}
+	},
 	withoutGizmos(cb) {
 
 		function editVis(edit) {
