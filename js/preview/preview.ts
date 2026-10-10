@@ -2241,7 +2241,7 @@ export const ViewOptionsDialog = new ConfigDialog('preview_view_options', {
 		preview_prototype: {label: 'settings.preview_prototype', type: 'checkbox', style: 'toggle_switch', description: 'settings.preview_prototype.desc'},
 		// Always shown, since the Prototype marker colors use them while the toggle is off as well
 		preview_prototype_color: {label: 'settings.preview_prototype_color', type: 'color', group: 'prototype'},
-		preview_prototype_size: {...effectRange('preview_prototype_size', 'prototype', 1, 64, 1, () => true), description: 'settings.preview_prototype_size.desc'},
+		preview_prototype_size: {...effectRange('preview_prototype_size', 'prototype', 1, 256, 1, () => true), description: 'settings.preview_prototype_size.desc'},
 		preview_prototype_contrast: effectRange('preview_prototype_contrast', 'prototype', 0, 100, 1, () => true),
 		// Lighting & effects, see viewport_effects.ts
 		_effects: '_',

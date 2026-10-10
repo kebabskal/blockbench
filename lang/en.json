@@ -1143,7 +1143,7 @@
 	"settings.preview_prototype_color": "Grid Color",
 	"settings.preview_prototype_size": "Tile Size",
 	"settings.preview_prototype_contrast": "Checker Contrast",
-	"settings.preview_prototype_size.desc": "Width of a checker tile in units. 16 units are 1 meter at a 1/16 export scale",
+	"settings.preview_prototype_size.desc": "Width of one checker tile in units, with fainter lines every quarter tile. 16 units are 1 meter at a 1/16 export scale",
 	"settings.preview_effects_in_paint": "Effects in Paint Mode",
 	"settings.preview_effects_in_paint.desc": "Show shadows, outlines and the other viewport effects in Paint mode too. They only change how the model looks, not the painted colors",
 	"settings.preview_shadows": "Shadows",
