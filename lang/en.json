@@ -1135,6 +1135,8 @@
 	"settings.tone_mapping.desc": "Approximation method for displaying high dynamic range on a standard screen for PBR rendering.",
 	"settings.fov": "FOV",
 	"settings.fov.desc": "Camera Field of View. Default is 45",
+	"settings.preview_effects_in_paint": "Effects in Paint Mode",
+	"settings.preview_effects_in_paint.desc": "Show shadows, outlines and the other viewport effects in Paint mode too. They only change how the model looks, not the painted colors",
 	"settings.preview_shadows": "Shadows",
 	"settings.preview_shadows.desc": "Shadows in the viewport from a sun light. Works with shading turned off too",
 	"settings.preview_shadow_strength": "Shadow Opacity",

@@ -2156,7 +2156,7 @@ StateMemory.init('viewport_background_color', 'string');
 // Viewport whose options are being edited
 let view_options_preview: Preview = null;
 const EFFECT_SETTINGS = [
-	'element_highlight', 'selection_display', 'clean_navigation',
+	'element_highlight', 'selection_display', 'clean_navigation', 'preview_effects_in_paint',
 	'preview_shadows', 'preview_shadow_strength', 'preview_shadow_softness', 'preview_light_direction', 'preview_light_height', 'preview_ground_shadow',
 	'preview_ssao', 'preview_ssao_radius', 'preview_ssao_strength',
 	'preview_cavity', 'preview_cavity_ridge', 'preview_cavity_valley',
@@ -2238,6 +2238,7 @@ export const ViewOptionsDialog = new ConfigDialog('preview_view_options', {
 		}},
 		// Lighting & effects, see viewport_effects.ts
 		_effects: '_',
+		preview_effects_in_paint: {label: 'settings.preview_effects_in_paint', type: 'checkbox', style: 'toggle_switch', description: 'settings.preview_effects_in_paint.desc'},
 		preview_shadows: {label: 'settings.preview_shadows', type: 'inline_select', collapses: 'shadows', options: {
 			off: 'settings.preview_shadows.off',
 			hard: 'settings.preview_shadows.hard',

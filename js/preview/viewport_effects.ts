@@ -715,7 +715,8 @@ function updateHighlightColors() {
 
 export const ViewportEffects = {
 	isActive(preview: Preview): boolean {
-		if (!Project || !Project.model_3d || Modes.paint) return false;
+		if (!Project || !Project.model_3d) return false;
+		if (Modes.paint && !settings.preview_effects_in_paint.value) return false;
 		// The shaders use GLSL 3 features
 		if (!preview.renderer || !preview.renderer.capabilities.isWebGL2) return false;
 		return settings.preview_shadows.value != 'off' || !!settings.preview_ssao.value || !!settings.preview_cavity.value || !!settings.preview_outline.value || !!settings.preview_rim.value

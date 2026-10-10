@@ -144,6 +144,7 @@ function setupSettings() {
 	new Setting('save_view_per_tab',				{category: 'preview', value: true});
 	new Setting('clean_navigation',					{category: 'preview', value: true});
 	// Viewport effects, see preview/viewport_effects.ts
+	new Setting('preview_effects_in_paint',		{category: 'preview', value: true});
 	new Setting('preview_shadows', 					{category: 'preview', value: 'off', type: 'select', options: {
 		off: tl('settings.preview_shadows.off'),
 		hard: tl('settings.preview_shadows.hard'),
