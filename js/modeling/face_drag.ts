@@ -28,6 +28,8 @@ type EdgeHit = {
 	face: string
 	// Cube axis the edge runs along, which is the rotation axis
 	edge_axis: number
+	// Which of the face's four edges it is
+	edge_index: number
 	// Ends of the edge in the cube mesh's local space
 	ends: [THREE.Vector3, THREE.Vector3]
 }
@@ -65,6 +67,8 @@ let drag: DragState | null = null;
 let highlight: THREE.Object3D | null = null;
 // Cube that the highlight is attached to
 let highlight_cube: Cube | null = null;
+// What the highlight shows, so it can be rebuilt from the cube's current shape
+let highlight_target: {face: string, edge_index: number | null} | null = null;
 let refresh_scheduled = false;
 let cursor_mode: string | null = null;
 
@@ -126,11 +130,11 @@ function getFaceCorners(cube: Cube, face: string): THREE.Vector3[] {
 /**
  * Find the edge of the hovered face that the mouse is close to on screen
  */
-function findEdge(data: RaycastResult): EdgeHit | null {
-	let preview = Preview.selected;
-	let cube = data.element as Cube;
-	if (!preview || !Format.rotate_cubes || Format.rotation_limit || !data.event) return null;
-	let [axis, direction] = FACE_AXES[data.face];
+/**
+ * The four edges of a cube face as the cube axis they run along and their ends in the cube mesh's local space
+ */
+function getFaceEdges(cube: Cube, face: string): [number, THREE.Vector3, THREE.Vector3][] {
+	let [axis, direction] = FACE_AXES[face];
 	let [low, high] = getLocalBox(cube);
 	let level = direction == 1 ? high[axis] : low[axis];
 	let [b, c] = [0, 1, 2].filter(i => i != axis);
@@ -147,6 +151,14 @@ function findEdge(data: RaycastResult): EdgeHit | null {
 		[c, point(c, low[c], b, low[b]), point(c, high[c], b, low[b])],
 		[c, point(c, low[c], b, high[b]), point(c, high[c], b, high[b])],
 	];
+	return edges;
+}
+
+function findEdge(data: RaycastResult): EdgeHit | null {
+	let preview = Preview.selected;
+	let cube = data.element as Cube;
+	if (!preview || !Format.rotate_cubes || Format.rotation_limit || !data.event) return null;
+	let edges = getFaceEdges(cube, data.face);
 	let mesh = cube.mesh;
 	mesh.updateMatrixWorld();
 	let screen_edges = edges.map(([edge_axis, start, end]) => {
@@ -163,7 +175,7 @@ function findEdge(data: RaycastResult): EdgeHit | null {
 		let distance = distanceToSegment(mouse, screen_edges[i][0], screen_edges[i][1]);
 		if (distance < closest_distance) {
 			closest_distance = distance;
-			closest = {cube, face: data.face, edge_axis, ends: [start, end]};
+			closest = {cube, face: data.face, edge_axis, edge_index: i, ends: [start, end]};
 		}
 	})
 	return closest;
@@ -199,6 +211,7 @@ function showHighlight(cube: Cube, face: string) {
 	let group = new THREE.Object3D();
 	group.add(fill, line);
 	addHighlight(cube, group);
+	highlight_target = {face, edge_index: null};
 }
 function showEdgeHandle(edge: EdgeHit) {
 	removeHighlight();
@@ -231,6 +244,7 @@ function showEdgeHandle(edge: EdgeHit) {
 	group.add(bar, ...knobs);
 	group.traverse(object => object.renderOrder = 900);
 	addHighlight(edge.cube, group);
+	highlight_target = {face: edge.face, edge_index: edge.edge_index};
 }
 function removeHighlight() {
 	if (!highlight) return;
@@ -245,6 +259,7 @@ function removeHighlight() {
 	materials.forEach(material => material.dispose());
 	highlight = null;
 	highlight_cube = null;
+	highlight_target = null;
 }
 
 const CURSORS = {move: 'move', move_normal: 'ns-resize', resize: 'ns-resize', rotate: 'grab', rotating: 'grabbing'};
@@ -641,8 +656,22 @@ function updateHover(data: RaycastResult | false) {
 	}
 }
 /**
+ * Rebuild the current highlight from the cube's current shape right away, before the next frame is drawn
+ */
+function rebuildHighlight() {
+	if (!highlight || !highlight_cube || !highlight_target) return;
+	let cube = highlight_cube;
+	let {face, edge_index} = highlight_target;
+	if (edge_index == null) {
+		showHighlight(cube, face);
+	} else {
+		let [edge_axis, start, end] = getFaceEdges(cube, face)[edge_index];
+		showEdgeHandle({cube, face, edge_axis, edge_index, ends: [start, end]});
+	}
+}
+/**
  * The highlight is built in the cube's local space, so rebuild it when the cube changes under a still mouse,
- * for example when its pivot is moved, or on undo
+ * for example when its pivot is moved, or on undo. In the next frame, check again what is under the mouse
  */
 function scheduleHoverRefresh() {
 	if (refresh_scheduled) return;
@@ -716,7 +745,10 @@ function getPivotTargetAtMouse(): {cube: Cube, target: PivotTarget} | null {
 
 BARS.defineActions(function() {
 	Cube.preview_controller.on('update_transform update_geometry', ({element}) => {
-		if (element === highlight_cube && !drag) scheduleHoverRefresh();
+		if (element === highlight_cube && !drag) {
+			rebuildHighlight();
+			scheduleHoverRefresh();
+		}
 	})
 	new Action('set_pivot_at_cursor', {
 		icon: 'gps_fixed',
