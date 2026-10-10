@@ -43,9 +43,16 @@ export class KeyframeDataPoint {
 		return copy;
 	}
 }
-new Property(KeyframeDataPoint, 'molang', 'x', { label: 'X', condition: point => point.keyframe.transform, default: point => (point && point.keyframe.channel == 'scale' ? '1' : '0') });
-new Property(KeyframeDataPoint, 'molang', 'y', { label: 'Y', condition: point => point.keyframe.transform, default: point => (point && point.keyframe.channel == 'scale' ? '1' : '0') });
-new Property(KeyframeDataPoint, 'molang', 'z', { label: 'Z', condition: point => point.keyframe.transform, default: point => (point && point.keyframe.channel == 'scale' ? '1' : '0') });
+function getDataPointDefault(point) {
+	if (!point) return '0';
+	let channel_config = point.keyframe.animator?.channels[point.keyframe.channel];
+	if (channel_config?.default_value !== undefined) return channel_config.default_value;
+	return point.keyframe.channel == 'scale' ? '1' : '0';
+}
+new Property(KeyframeDataPoint, 'molang', 'x', { label: 'X', condition: point => point.keyframe.transform, default: getDataPointDefault });
+// Scalar channels only use the x value
+new Property(KeyframeDataPoint, 'molang', 'y', { label: 'Y', condition: point => point.keyframe.transform && !point.keyframe.scalar, default: getDataPointDefault });
+new Property(KeyframeDataPoint, 'molang', 'z', { label: 'Z', condition: point => point.keyframe.transform && !point.keyframe.scalar, default: getDataPointDefault });
 new Property(KeyframeDataPoint, 'string', 'effect', {label: tl('data.effect'), condition: point => ['particle', 'sound'].includes(point.keyframe.channel)});
 new Property(KeyframeDataPoint, 'string', 'locator',{label: tl('data.locator'), condition: point => ['particle', 'sound'].includes(point.keyframe.channel)});
 new Property(KeyframeDataPoint, 'molang', 'script', {label: tl('timeline.pre_effect_script'), condition: point => ['particle', 'timeline'].includes(point.keyframe.channel), default: ''});
@@ -67,6 +74,7 @@ export class Keyframe {
 			Merge.string(this, data, 'channel')
 			this.animator = animator;
 			this.transform = !!(this.animator.channels[this.channel]).transform;
+			this.scalar = !!(this.animator.channels[this.channel]).scalar;
 			this.data_points.push(new KeyframeDataPoint(this));
 		}
 
@@ -1407,6 +1415,8 @@ Interface.definePanels(function() {
 							if (difference) {
 								if (Keyframe.selected[0]?.channel == 'rotation') {
 									difference *= getRotationInterval(e2);
+								} else if (Keyframe.selected[0]?.scalar) {
+									difference *= (e2.shiftKey || Pressing.overrides.shift) ? 0.01 : 0.1;
 								} else {
 									difference *= canvasGridSize(e2.shiftKey || Pressing.overrides.shift, e2.ctrlOrCmd || Pressing.overrides.ctrl);
 								}
@@ -1624,7 +1634,7 @@ Interface.definePanels(function() {
 										class="bar flex"
 										:id="'keyframe_bar_' + property.name"
 									>
-										<label :class="{[channel_colors[key]]: true, slidable_input: property.type == 'molang', axis: !!channel_colors[key]}" @mousedown="slideValue(key, $event, data_point_i)" @touchstart="slideValue(key, $event, data_point_i)">{{ property.label }}</label>
+										<label :class="{[channel_colors[key]]: !firstKeyframe.scalar, slidable_input: property.type == 'molang', axis: !!channel_colors[key] && !firstKeyframe.scalar}" @mousedown="slideValue(key, $event, data_point_i)" @touchstart="slideValue(key, $event, data_point_i)">{{ firstKeyframe.scalar ? firstKeyframe.animator.channels[channel].name : property.label }}</label>
 										<vue-prism-editor 
 											v-if="property.type == 'molang'"
 											class="molang_input keyframe_input tab_target"

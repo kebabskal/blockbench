@@ -2467,6 +2467,7 @@
 	"action.view_built_in_variables.desc": "Display the list of variables and their values that Blockbench automatically provides for animation preview",
 
 	"timeline.rotation": "Rotation",
+	"timeline.ik_weight": "IK Weight",
 	"timeline.position": "Position",
 	"timeline.scale": "Scale",
 	"timeline.particle": "Particle",

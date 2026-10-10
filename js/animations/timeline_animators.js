@@ -888,10 +888,13 @@ export class NullObjectAnimator extends BoneAnimator {
 		if (!bones.length) return;
 		bones.reverse();
 
+		// Keep the keyframed (FK) pose to blend with, then solve from the default pose
+		let fk_quaternions = bones.map(bone => bone.scene_object.quaternion.clone());
 		bones.forEach(bone => {
 			let scene_object = bone.scene_object; 
 			if (scene_object.fix_rotation) scene_object.rotation.copy(scene_object.fix_rotation);
 		});
+		let rest_locals = bones.map(bone => bone.scene_object.quaternion.clone());
 
 		let bone_pos = [];
 		let rest_quaternions = [];
@@ -958,7 +961,6 @@ export class NullObjectAnimator extends BoneAnimator {
 		if (!rest_normal && solved_normal) rest_normal = solved_normal.clone().applyQuaternion(swing.clone().invert());
 		if (rest_normal && !solved_normal) solved_normal = rest_normal.clone().applyQuaternion(swing);
 
-		let results = {};
 		let rest_frame = new THREE.Quaternion();
 		let solved_frame = new THREE.Quaternion();
 		for (let i = 0; i < n - 1; i++) {
@@ -982,50 +984,48 @@ export class NullObjectAnimator extends BoneAnimator {
 
 			let world_quaternion = delta.multiply(rest_quaternions[i]);
 			let parent_quaternion = scene_object.parent.getWorldQuaternion(new THREE.Quaternion());
-			let old_local = scene_object.quaternion.clone();
 			scene_object.quaternion.copy(parent_quaternion.invert().multiply(world_quaternion));
 			scene_object.updateMatrixWorld();
-
-			if (get_samples) {
-				let local_delta = scene_object.quaternion.clone().multiply(old_local.invert());
-				let rotation = new THREE.Euler().setFromQuaternion(local_delta, Format.euler_order);
-				results[bone.uuid] = {
-					euler: rotation,
-					array: [
-						Math.radToDeg(rotation.x),
-						Math.radToDeg(rotation.y),
-						Math.radToDeg(rotation.z),
-					]
-				}
-			}
 		}
 
 		if (target_original_quaternion) {
-			let rotation = get_samples ? new THREE.Euler() : Reusable.euler1;
-			rotation.copy(target.mesh.rotation);
-
 			target.mesh.quaternion.copy(target_original_quaternion);
 			let q1 = target.mesh.parent.getWorldQuaternion(Reusable.quat1);
 			target.mesh.quaternion.premultiply(q1.invert())
 			target.mesh.updateMatrixWorld();
-
-			rotation.x = target.mesh.rotation.x - rotation.x;
-			rotation.y = target.mesh.rotation.y - rotation.y;
-			rotation.z = target.mesh.rotation.z - rotation.z;
-
-			if (get_samples) {
-				results[target.uuid] = {
-					euler: rotation,
-					array: [
-						Math.radToDeg(rotation.x),
-						Math.radToDeg(rotation.y),
-						Math.radToDeg(rotation.z),
-					]
-				}
-			}
 		}
 
-		if (get_samples) return results;
+		// Blend between the keyframed pose and the IK result
+		let weight = this.getIKWeight();
+		if (weight < 1) {
+			bones.forEach((bone, i) => {
+				let scene_object = bone.scene_object;
+				scene_object.quaternion.copy(fk_quaternions[i].clone().slerp(scene_object.quaternion, weight));
+			});
+			bones[0].scene_object.updateMatrixWorld();
+		}
+
+		if (!get_samples) return;
+		// Samples hold the final rotation of every bone in the chain relative to its default pose
+		let results = {};
+		bones.forEach((bone, i) => {
+			let local_delta = bone.scene_object.quaternion.clone().multiply(rest_locals[i].clone().invert());
+			let rotation = new THREE.Euler().setFromQuaternion(local_delta, Format.euler_order);
+			results[bone.uuid] = {
+				euler: rotation,
+				array: [
+					Math.radToDeg(rotation.x),
+					Math.radToDeg(rotation.y),
+					Math.radToDeg(rotation.z),
+				]
+			}
+		});
+		return results;
+	}
+	getIKWeight() {
+		if (!this.ik_weight?.length || this.muted.ik_weight) return 1;
+		let value = this.interpolate('ik_weight');
+		return value ? Math.clamp(value[0], 0, 1) : 1;
 	}
 	displayFrame(multiplier = 1) {
 		if (!this.doRender()) return;
@@ -1041,6 +1041,7 @@ export class NullObjectAnimator extends BoneAnimator {
 NullObjectAnimator.prototype.type = 'null_object';
 NullObjectAnimator.prototype.channels = {
 	position: { name: tl('timeline.position'), mutable: true, transform: true, max_data_points: 2 },
+	ik_weight: { name: tl('timeline.ik_weight'), mutable: true, transform: true, scalar: true, default_value: '1', max_data_points: 2 },
 }
 NullObject.animator = NullObjectAnimator;
 

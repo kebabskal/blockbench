@@ -167,7 +167,7 @@ export class Animation extends AnimationItem {
 		let last_time = Timeline.time;
 		let samples = {};
 
-		if (!NullObject.all.find(null_object => null_object.ik_target && this.getBoneAnimator(null_object)?.position.length)) return samples;
+		if (!NullObject.all.find(null_object => null_object.ik_target && this.getBoneAnimator(null_object)?.keyframes.length)) return samples;
 
 		Timeline.time = 0;
 		while (Timeline.time <= this.length && Timeline.time <= 200) {
@@ -1076,14 +1076,20 @@ BARS.defineActions(function() {
 				if (!kfs) continue;
 				keyframes.push(...kfs);
 			}
+			// The samples already contain the keyframed rotation blended with IK, so they replace it
+			for (let uuid in ik_samples) {
+				let rotation_keyframes = animation.animators[uuid]?.rotation;
+				if (rotation_keyframes) keyframes.push(...rotation_keyframes);
+			}
 			Undo.initEdit({keyframes});
 
 			keyframes.slice().forEach(kf => kf.remove());
 			keyframes.empty();
 			
 			for (let uuid in ik_samples) {
-				let animator = animation.animators[uuid];
-				let node = animator.group ?? animator.element;
+				let node = OutlinerNode.uuids[uuid];
+				if (!node) continue;
+				let animator = animation.getBoneAnimator(node);
 				ik_samples[uuid].forEach(({array, euler}) => {
 					if (!node.rotation.allEqual(0)) {
 						let base = Reusable.quat1.setFromEuler(node.scene_object.fix_rotation);
@@ -1103,7 +1109,8 @@ BARS.defineActions(function() {
 				ik_samples[uuid].forEach(({array}, i) => {
 					let before = ik_samples[uuid][i-1];
 					let after = ik_samples[uuid][i+1];
-					if ((!before || before.array.equals(array)) && (!after || after.array.equals(array))) return;
+					// Always keep the first sample so constant rotations still get a keyframe
+					if (before && before.array.equals(array) && (!after || after.array.equals(array))) return;
 
 					let time = Timeline.snapTime(i / animation.snapping, animation);
 					let values = {x: array[0], y: array[1], z: array[2]};
