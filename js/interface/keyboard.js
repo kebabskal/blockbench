@@ -764,6 +764,7 @@ addEventListeners(document, 'keydown mousedown', function(e) {
 	}
 
 	//Hardcoded Keys
+	let cancel_used = false;
 	if (isSwapToolsHoldKey(e.which) && Toolbox.selected.alt_tool && !Toolbox.original && !open_interface) {
 		//Alt Tool
 		var orig = Toolbox.selected;
@@ -776,9 +777,11 @@ addEventListeners(document, 'keydown mousedown', function(e) {
 	} else if (Keybinds.extra.cancel.keybind.isTriggered(e) && PointerTarget.active == PointerTarget.types.gizmo_transform) {
 		Transformer.cancelMovement(e, false);
 		updateSelection();
+		cancel_used = true;
 	} else if (KnifeToolContext.current) {
 		if (Keybinds.extra.cancel.keybind.isTriggered(e)) {
 			KnifeToolContext.current.cancel();
+			cancel_used = true;
 		} else if (Keybinds.extra.confirm.keybind.isTriggered(e)) {
 			KnifeToolContext.current.apply();
 		}
@@ -888,6 +891,14 @@ addEventListeners(document, 'keydown mousedown', function(e) {
 			TextureLayer.selected.resolveLimbo(false);
 			used = true;
 		}
+	} else if (
+		// Escape deselects, if it wasn't used to cancel or close something else
+		Keybinds.extra.cancel.keybind.isTriggered(e) && Project && !input_focus && !used && !cancel_used &&
+		!ActionControl.open && !PointerTarget.active && !Modes.display
+	) {
+		SharedActions.run('unselect_all', e);
+		Blockbench.dispatchEvent('unselect_all', {});
+		used = true;
 	}
 	if (ActionControl.open) {
 		used = ActionControl.handleKeys(e) || used

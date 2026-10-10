@@ -150,7 +150,7 @@ BARS.defineActions(function() {
 	new Action('action_control', {
 		icon: 'play_arrow',
 		category: 'blockbench',
-		keybind: new Keybind({key: 'f'}),
+		keybind: new Keybind({key: 'p', ctrl: true, shift: true}),
 		click: function () {
 			ActionControl.select()
 		}

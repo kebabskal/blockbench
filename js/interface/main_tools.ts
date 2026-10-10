@@ -9,7 +9,7 @@ BARS.defineActions(() => {
 	new KeybindItem('preview_select', {
 		category: 'navigate',
 		keybind: new Keybind({key: Blockbench.isTouch ? 0 : 1},
-			{multi_select: 'ctrl', group_select: 'shift', loop_select: 'alt'}
+			{multi_select: 'shift', group_select: 'ctrl', loop_select: 'alt'}
 		),
 		variations: {
 			multi_select: {name: 'keybind.preview_select.multi_select'},
@@ -17,13 +17,14 @@ BARS.defineActions(() => {
 			loop_select: {name: 'keybind.preview_select.loop_select'},
 		}
 	})
+	// Godot-style navigation: middle mouse orbits, Shift + middle pans, Ctrl + middle zooms, right mouse flies
 	new KeybindItem('preview_rotate', {
 		category: 'navigate',
-		keybind: new Keybind({key: 1})
+		keybind: new Keybind({key: 2})
 	})
 	new KeybindItem('preview_drag', {
 		category: 'navigate',
-		keybind: new Keybind({key: 2})
+		keybind: new Keybind({key: 2, shift: true})
 	})
 	new KeybindItem('preview_fly', {
 		description: 'keybind.preview_fly.desc',
@@ -32,7 +33,7 @@ BARS.defineActions(() => {
 	})
 	new KeybindItem('preview_zoom', {
 		category: 'navigate',
-		keybind: new Keybind({key: 1, shift: true})
+		keybind: new Keybind({key: 2, ctrl: true})
 	})
 	new KeybindItem('preview_scroll_zoom', {
 		category: 'navigate',
@@ -48,7 +49,8 @@ BARS.defineActions(() => {
 	})
 	new KeybindItem('preview_area_select', {
 		category: 'navigate',
-		keybind: new Keybind({key: 1, ctrl: true, shift: null})
+		// Left drag on the background box selects, Shift or Ctrl adds to the selection
+		keybind: new Keybind({key: 1, ctrl: null, shift: null})
 	})
 
 	new KeybindItem('confirm', {

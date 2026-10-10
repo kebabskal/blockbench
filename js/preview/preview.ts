@@ -1412,10 +1412,13 @@ export class Preview {
 				Blockbench.dispatchEvent('canvas_click', data)
 			}
 
-			if (Keybinds.extra.preview_area_select.keybind.isTriggered(event)) {
+			// Only start a box selection on top of an element if the keybind needs a modifier,
+			// otherwise a plain left drag box selects from the background only
+			let area_keybind = Keybinds.extra.preview_area_select.keybind;
+			if (area_keybind.isTriggered(event) && (area_keybind.ctrl || area_keybind.shift || area_keybind.alt || area_keybind.meta)) {
 				this.startSelRect(event)
 			}
-			
+
 			return true;
 		}
 		if (is_canvas_click && typeof Toolbox.selected.onCanvasClick === 'function') {
@@ -2721,17 +2724,14 @@ BARS.defineActions(function() {
 		icon: 'center_focus_weak',
 		category: 'view',
 		condition: () => !Format.image_editor,
-		keybind: new Keybind({}, {
-			rotate_only: 'shift',
-			zoom: 'ctrl'
-		}),
+		keybind: new Keybind({key: 'f'}),
 		variations: {
 			rotate_only: {name: 'action.focus_on_selection.rotate_only'},
-			zoom: {name: 'action.focus_on_selection.zoom'}
 		},
 		click(event) {
 			if (!Project) return;
-			let zoom = this.keybind.additionalModifierTriggered(event, 'zoom');
+			// Frame the selection, so it fills the view and can be orbited
+			let zoom = !this.keybind.additionalModifierTriggered(event, 'rotate_only');
 			if (uvEditorActive()) {
 				UVEditor.focusOnSelection(zoom)
 
