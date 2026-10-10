@@ -431,13 +431,26 @@ export const Canvas = {
 	// Element under the cursor in the viewport
 	hovered_element: null,
 	/**
-	 * Whether the selection of this element is shown by the viewport outline instead of its wireframe
+	 * Whether the element is selected as a whole, rather than its vertices, edges or faces
 	 */
-	outlinesSelection(element) {
-		if (settings.element_highlight.value != 'outline' || !Modes.edit) return false;
+	isObjectSelection(element) {
 		if (element instanceof Mesh && BarItems.selection_mode.value != 'object') return false;
 		if (element instanceof SplineMesh && BarItems.spline_selection_mode.value != 'object') return false;
 		return true;
+	},
+	/**
+	 * Whether the selection of this element is shown by a viewport outline
+	 */
+	outlinesSelection(element) {
+		if (settings.selection_display.value == 'wireframe' || !Modes.edit) return false;
+		return Canvas.isObjectSelection(element);
+	},
+	/**
+	 * Whether the selection of this element is shown by its wireframe. The wireframe is always shown when editing vertices, edges or faces
+	 */
+	showsSelectionWireframe(element) {
+		if (settings.selection_display.value != 'outline' || !Modes.edit) return true;
+		return !Canvas.isObjectSelection(element);
 	},
 	updateCubeHighlights(hover_cube, force_off) {
 		Outliner.elements.forEach(element => {

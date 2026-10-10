@@ -641,14 +641,14 @@ function renderQuad(renderer: THREE.WebGLRenderer, material: THREE.Material, tar
  * Elements to outline for the "outline" element highlight mode
  */
 function getHighlightedElements(): {element: OutlinerElement, channel: 'selected' | 'hovered'}[] {
-	if (settings.element_highlight.value != 'outline' || !Modes.edit) return [];
+	if (!Modes.edit) return [];
 	let result = [];
 	for (let element of Outliner.selected) {
 		if (element.mesh && element.visibility !== false && Canvas.outlinesSelection(element)) {
 			result.push({element, channel: 'selected'});
 		}
 	}
-	let hovered = Canvas.hovered_element;
+	let hovered = settings.element_highlight.value == 'outline' && Canvas.hovered_element;
 	if (hovered && hovered.mesh && hovered.visibility !== false && !Transformer.dragging && hovered.preview_controller?.updateHighlight) {
 		result.push({element: hovered, channel: 'hovered'});
 	}

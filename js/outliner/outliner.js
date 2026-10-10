@@ -340,7 +340,7 @@ export class NodePreviewController extends EventSystem {
 			if (Modes.paint && settings.outlines_in_paint_mode.value === false) {
 				mesh.outline.visible = false;
 			} else {
-				mesh.outline.visible = (element.selected && !Canvas.outlinesSelection(element)) || (settings.constant_outlines.value && !(element instanceof TextureMesh));
+				mesh.outline.visible = (element.selected && Canvas.showsSelectionWireframe(element)) || (settings.constant_outlines.value && !(element instanceof TextureMesh));
 				if (mesh.outline.material == Canvas.outlineMaterial || mesh.outline.material == Canvas.outlineUnselectedMaterial) {
 					mesh.outline.material = element.selected ? Canvas.outlineMaterial : Canvas.outlineUnselectedMaterial;
 				}
