@@ -231,7 +231,9 @@ float shadowVisibility(vec3 world_position) {
  * so the line sits outside of the shape in front. Creases are drawn where the normals change sharply.
  */
 float outlineAmount(float depth) {
-	float center_z = depth < 1.0 ? getViewPosition(vUv, depth).z : -1.0e9;
+	vec3 center_position = depth < 1.0 ? getViewPosition(vUv, depth) : vec3(0.0, 0.0, -1.0e9);
+	vec3 center_normal = depth < 1.0 ? normalize(texture2D(tNormal, vUv).xyz * 2.0 - 1.0) : vec3(0.0, 0.0, 1.0);
+	float threshold = 0.02 * abs(center_position.z) + 0.3;
 	for (int i = 0; i < 16; i++) {
 		float angle = float(i) / 16.0 * 6.2831853;
 		vec2 direction = vec2(cos(angle), sin(angle));
@@ -240,8 +242,12 @@ float outlineAmount(float depth) {
 			float sample_depth = texture2D(tDepth, sample_uv).x;
 			if (sample_depth >= 1.0) continue;
 			if (depth >= 1.0) return 1.0;
-			float sample_z = getViewPosition(sample_uv, sample_depth).z;
-			if (sample_z > center_z + 0.03 * abs(center_z) + 0.5) return 1.0;
+			vec3 sample_position = getViewPosition(sample_uv, sample_depth);
+			// The neighbor has to be closer to the camera and off the plane of this pixel's surface,
+			// otherwise surfaces seen at a shallow angle would outline themselves
+			if (sample_position.z > center_position.z + threshold &&
+				dot(sample_position - center_position, center_normal) > threshold
+			) return 1.0;
 		}
 	}
 	if (CREASES_ON && depth < 1.0) {
