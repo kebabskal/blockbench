@@ -544,19 +544,32 @@ export class BoneAnimator extends GeneralAnimator {
 			} else if (before.interpolation === catmullrom || after.interpolation === catmullrom) {
 
 				let sorted = this[channel].slice().sort((kf1, kf2) => (kf1.time - kf2.time));
-				let before_index = sorted.indexOf(before);
-				let before_plus = sorted[before_index - 1];
-				let after_plus = sorted[before_index + 2];
-				if (this.animation.loop == 'loop' && sorted.length >= 3) {
-					if (!before_plus) before_plus = sorted.at(-2);
-					if (!after_plus) after_plus = sorted[1];
+				let before_plus, after_plus;
+				if (Format.animation_loop_wrapping && this.animation.loop == 'loop') {
+					// Treat the keyframes as a cycle. A last keyframe at the very end of the loop is the same point on the loop as one at 0
+					let seam_duplicate = sorted.length >= 2 &&
+						Math.epsilon(sorted[0].time, 0, epsilon) &&
+						Math.epsilon(sorted.at(-1).time, this.animation.length, epsilon);
+					let cycle = seam_duplicate ? sorted.slice(0, -1) : sorted;
+					let n = cycle.length;
+					let indexInCycle = kf => Math.max(cycle.indexOf(kf), 0);
+					before_plus = cycle[(indexInCycle(before) - 1 + n) % n];
+					after_plus = cycle[(indexInCycle(after) + 1) % n];
+				} else {
+					let before_index = sorted.indexOf(before);
+					before_plus = sorted[before_index - 1];
+					after_plus = sorted[before_index + 2];
+					if (this.animation.loop == 'loop' && sorted.length >= 3) {
+						if (!before_plus) before_plus = sorted.at(-2);
+						if (!after_plus) after_plus = sorted[1];
+					}
 				}
 
 				return mapAxes(axis => before.getCatmullromLerp(before_plus, before, after, after_plus, axis, alpha));
 
 			} else if (before.interpolation === bezier || after.interpolation === bezier) {
 				// Bezier
-				return mapAxes(axis => before.getBezierLerp(before, after, axis, alpha));
+				return mapAxes(axis => before.getBezierLerp(before, after, axis, alpha, before_time, after_time));
 			}
 		}
 		if (result && result instanceof Keyframe) {

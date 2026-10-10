@@ -245,24 +245,27 @@ export class Keyframe {
 
 		return curve.getPoint(time).y;
 	}
-	getBezierLerp(before, after, axis, alpha) {
+	/**
+	 * before_time and after_time can differ from the keyframe times when the segment wraps around the end of a loop
+	 */
+	getBezierLerp(before, after, axis, alpha, before_time = before.time, after_time = after.time) {
 		let axis_num = getAxisNumber(axis);
 		let val_before = before.calc(axis, 1);
 		let val_after = after.calc(axis, 0);
-		let time_gap = after.time - before.time;
+		let time_gap = after_time - before_time;
 		let time_handle_before = Math.clamp(before.bezier_right_time[axis_num] || 0, 0, time_gap);
 		let time_handle_after  = Math.clamp(after.bezier_left_time[axis_num]   || 0, -time_gap, 0);
 		let vectors = [
-			new THREE.Vector2(before.time, val_before),
+			new THREE.Vector2(before_time, val_before),
 
-			new THREE.Vector2(before.time + time_handle_before, val_before + before.bezier_right_value[axis_num] || 0),
-			new THREE.Vector2(after.time  + time_handle_after,  val_after  + after.bezier_left_value[axis_num]   || 0),
+			new THREE.Vector2(before_time + time_handle_before, val_before + before.bezier_right_value[axis_num] || 0),
+			new THREE.Vector2(after_time  + time_handle_after,  val_after  + after.bezier_left_value[axis_num]   || 0),
 
-			new THREE.Vector2(after.time, val_after),
+			new THREE.Vector2(after_time, val_after),
 		];
 
 		let curve = new THREE.CubicBezierCurve(...vectors);
-		let time = before.time + (after.time - before.time) * alpha;
+		let time = before_time + (after_time - before_time) * alpha;
 
 		let points = curve.getPoints(200);
 		let closest;
@@ -650,6 +653,56 @@ export function updateKeyframeValue(axis, value, data_point) {
 		updateKeyframeSelection();
 	}
 }
+/**
+ * Whether keyframes of the animation should wrap around its end instead of being clamped to its length
+ */
+export function isLoopWrapping(animation = Animation.selected) {
+	return !!(Format.animation_loop_wrapping && animation && animation.loop == 'loop' && animation.length > 0);
+}
+/**
+ * Moves keyframes in time by the offset in seconds, wrapping them around the end of the loop
+ */
+export function shiftKeyframesInLoop(keyframes, offset, animation = Animation.selected) {
+	let length = animation.length;
+	let epsilon = 1/1200;
+	let channels = new Map();
+	for (let kf of keyframes) {
+		channels.set(kf.animator.uuid + '.' + kf.channel, kf);
+	}
+	let affected = [];
+	for (let kf of channels.values()) {
+		affected.push(...kf.animator[kf.channel]);
+	}
+	Undo.initEdit({keyframes: affected});
+
+	let moving = new Set(keyframes);
+	for (let kf of channels.values()) {
+		// A keyframe at the end of the loop is the same point as the one at 0, so drop it instead of moving the two apart
+		let channel_keyframes = kf.animator[kf.channel];
+		let start = channel_keyframes.find(kf2 => Math.epsilon(kf2.time, 0, epsilon));
+		let end = channel_keyframes.find(kf2 => Math.epsilon(kf2.time, length, epsilon));
+		if (start && end && start != end && moving.has(start) && moving.has(end)) {
+			moving.delete(end);
+			end.remove();
+		}
+	}
+	for (let kf of moving) {
+		let time = (kf.time + offset) % length;
+		if (time < 0) time += length;
+		time = Timeline.snapTime(time, animation);
+		if (Math.epsilon(time, length, epsilon)) time = 0;
+		kf.time = time;
+	}
+	// A moved keyframe replaces a keyframe that wasn't moved at the same time
+	for (let kf of moving) {
+		kf.animator[kf.channel]
+			.filter(other => other != kf && !moving.has(other) && Math.epsilon(other.time, kf.time, epsilon))
+			.forEach(other => other.remove());
+	}
+	Animator.preview();
+	BarItems.slider_keyframe_time.update();
+	Undo.finishEdit('Shift keyframes around loop');
+}
 export function updateKeyframeSelection() {
 	Timeline.keyframes.forEach(kf => {
 		if (kf.selected && !Timeline.selected.includes(kf)) {
@@ -884,6 +937,10 @@ BARS.defineActions(function() {
 		condition: {modes: ['animate'], method: () => (!open_menu && Timeline.selected.length)},
 		keybind: new Keybind({key: 37}),
 		click: function (e) {
+			if (isLoopWrapping()) {
+				shiftKeyframesInLoop(Timeline.selected.slice(), -Timeline.getStep());
+				return;
+			}
 			Undo.initEdit({keyframes: Timeline.selected})
 			Timeline.selected.forEach((kf) => {
 				kf.time = Timeline.snapTime(limitNumber(kf.time - Timeline.getStep(), 0, 1e4))
@@ -899,6 +956,10 @@ BARS.defineActions(function() {
 		condition: {modes: ['animate'], method: () => (!open_menu && Timeline.selected.length)},
 		keybind: new Keybind({key: 39}),
 		click: function (e) {
+			if (isLoopWrapping()) {
+				shiftKeyframesInLoop(Timeline.selected.slice(), Timeline.getStep());
+				return;
+			}
 			Undo.initEdit({keyframes: Timeline.selected})
 			Timeline.selected.forEach((kf) => {
 				kf.time = Timeline.snapTime(limitNumber(kf.time + Timeline.getStep(), 0, 1e4))

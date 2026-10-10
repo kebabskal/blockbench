@@ -24,6 +24,7 @@ new ModelFormat('free', {
 	per_texture_wrap_mode: true,
 	uv_rotation: true,
 	animation_mode: true,
+	animation_loop_wrapping: true,
 	per_animator_rotation_interpolation: true,
 	animated_textures: true,
 	locators: true,
