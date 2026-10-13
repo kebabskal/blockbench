@@ -41,6 +41,7 @@ All of these are in the Preview Options popover, work in every view mode and are
 
 ### Painting and 2D editor
 - **Mirror UVs to Other Side (Alt+M):** UV and paint one side of something symmetrical, then copy those UVs, mirrored, onto the other side. For single cubes that span both sides, like a fish body or a fin, look at the side you painted and the face facing the camera is copied onto the opposite face, in the cube's own rotation. Cubes with a matching cube on the other side of the model (found like Mirror Modeling finds them) copy all their faces onto it: select one side to copy that side, or both and the side the camera is on gets copied. Also in the cube context menu and the UV editor toolbar.
+- **Export a layer as a separate file:** right-click a texture layer and turn on **Export as Separate File** (also in its properties). Saving the texture then leaves that layer out of the texture's file and saves it next to it as its own transparent PNG, named after the texture and the layer (`fish.png` and `fish_wound.png`). The layer stays visible in Blockbench while you paint, and a file icon marks it in the Layers panel. Handy for overlays a game switches on, like wounds or scorch marks, that stay in sync with the base texture.
 - **Select Face Pixels:** selects the texture pixels of the selected faces, so adjustments only affect those faces.
 - **Selection outlines in Paint mode** can be toggled from the paint toolbar.
 - **Scroll to zoom** in the 2D editor without holding Ctrl (Shift scrolls instead).

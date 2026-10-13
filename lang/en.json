@@ -2657,6 +2657,8 @@
 	"menu.texture.export": "Save As",
 	"menu.texture.save": "Save",
 	"menu.texture.properties": "Properties...",
+	"layer.export_separately": "Export as Separate File",
+	"layer.export_separately.desc": "Leave this layer out of the texture file and save it next to it as its own file, named after the texture and the layer, like fish_wound.png",
 
 	"menu.texture_group.resolve": "Resolve",
 

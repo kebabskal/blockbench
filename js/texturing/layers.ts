@@ -12,6 +12,7 @@ export interface TextureLayerData {
 	opacity?: number
 	visible?: boolean
 	blend_mode?: LayerBlendMode
+	export_separately?: boolean
 	image_data?: ImageData
 	data_url?: string
 }
@@ -221,6 +222,10 @@ export class TextureLayer extends TextureLayerItem {
 	scale: ArrayVector2
 	opacity: number
 	blend_mode: LayerBlendMode
+	/**
+	 * Left out of the texture's image file and saved next to it as its own file instead, see Texture.save
+	 */
+	export_separately: boolean
 
 	public type = 'pixel_layer'
 	static properties: Record<string, Property<any>>
@@ -383,6 +388,16 @@ export class TextureLayer extends TextureLayerItem {
 	setSize(width: number, height: number): this {
 		this.canvas.width = width;
 		this.canvas.height = height;
+		return this;
+	}
+	/**
+	 * Toggle whether the layer is saved as its own file instead of being part of the texture's file
+	 */
+	toggleExportSeparately(): this {
+		Undo.initEdit({layers: [this]});
+		this.export_separately = !this.export_separately;
+		this.texture.saved = false;
+		Undo.finishEdit('Toggle export layer separately');
 		return this;
 	}
 	/**
@@ -557,6 +572,7 @@ export class TextureLayer extends TextureLayerItem {
 				name: {label: 'generic.name', value: this.name},
 				opacity: {label: 'action.layer_opacity', type: 'range', value: Math.round(this.opacity / 100 * opacity_range), min: 0, max: opacity_range},
 				blend_mode: {label: 'action.blend_mode', type: 'select', value: this.blend_mode, options: blend_mode_options},
+				export_separately: {label: 'layer.export_separately', description: 'layer.export_separately.desc', type: 'checkbox', value: this.export_separately},
 			},
 			onConfirm: form_data => {
 				dialog.hide().delete();
@@ -565,7 +581,9 @@ export class TextureLayer extends TextureLayerItem {
 					form_data.name != this.name
 					|| !Math.epsilon(form_data.opacity, this.opacity, 0.2)
 					|| form_data.blend_mode != this.blend_mode
+					|| form_data.export_separately != this.export_separately
 				) {
+					if (form_data.export_separately != this.export_separately) this.texture.saved = false;
 					Undo.initEdit({layers: [this]});
 					this.extend(form_data);
 					this.texture.updateChangesAfterEdit();
@@ -604,6 +622,13 @@ TextureLayer.prototype.menu = new Menu([
 	'crop_layer_to_selection',
 	'layer_to_texture_size',
 	'merge_layer_down',
+	{
+		id: 'export_separately',
+		name: 'layer.export_separately',
+		description: 'layer.export_separately.desc',
+		icon: (layer: TextureLayer) => layer.export_separately ? 'check_box' : 'check_box_outline_blank',
+		click(layer: TextureLayer) { layer.toggleExportSeparately() }
+	},
 	new MenuSeparator('copypaste'),
 	'copy',
 	'duplicate',
@@ -629,6 +654,7 @@ new Property(TextureLayer, 'number', 'opacity', {default: 100});
 new Property(TextureLayer, 'boolean', 'visible', {default: true});
 new Property(TextureLayer, 'enum', 'blend_mode', {default: 'default', values: ['default', 'set_opacity', 'color', 'multiply', 'add', 'darken', 'lighten', 'screen', 'overlay', 'difference', 'alpha_mask']});
 new Property(TextureLayer, 'boolean', 'in_limbo', {default: false});
+new Property(TextureLayer, 'boolean', 'export_separately', {default: false});
 
 Object.defineProperty(TextureLayer, 'all', {
 	get() {
@@ -1388,6 +1414,8 @@ Interface.definePanels(function() {
 						<label>
 							{{ layer.name }}
 						</label>
+
+						<i v-if="layer.export_separately" class="material-icons icon layer_export_separately_icon" title="${tl('layer.export_separately')}">file_present</i>
 
 						<div v-if="'toggleVisibility' in layer" class="in_list_button" @click.stop="layer.toggleVisibility()" @dblclick.stop>
 							<i v-if="layer.visible" class="material-icons icon">visibility</i>

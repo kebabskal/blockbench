@@ -1644,12 +1644,19 @@ export class Texture {
 		}
 
 		let file_format_options = Texture.file_formats[this.file_format] ?? Texture.file_formats.png;
+		// Layers saved as their own files are left out of the texture's file
+		let separate_layers = this.getSeparateExportLayers();
+		if (separate_layers.length) this.compositeLayers(true);
 		let export_data;
-		if (file_format_options.encode) {
-			export_data = await file_format_options.encode(this);
-		} else {
-			let encoding = 'image/'+(this.file_format??'png');
-			export_data = this.canvas.toDataURL(encoding);
+		try {
+			if (file_format_options.encode) {
+				export_data = await file_format_options.encode(this);
+			} else {
+				let encoding = 'image/'+(this.file_format??'png');
+				export_data = this.canvas.toDataURL(encoding);
+			}
+		} finally {
+			if (separate_layers.length) this.compositeLayers();
 		}
 		tex_version++;
 
@@ -1661,6 +1668,7 @@ export class Texture {
 					let mcmeta_content = this.getMCMetaContent();
 					Blockbench.writeFile(path + '.mcmeta', {content: compileJSON(mcmeta_content)})
 				}
+				this.writeSeparateLayers(path);
 			}
 
 			if (!as && this.path && fs.existsSync(this.path)) {
@@ -1813,10 +1821,28 @@ export class Texture {
 	}
 	updateLayerChanges(update_data_url) {
 		if (!this.layers_enabled || this.width == 0) return this;
+		this.compositeLayers();
+
+		if (!Format.image_editor && this.getMaterial()) {
+			this.getOwnMaterial().map.needsUpdate = true;
+		}
+		if (update_data_url) {
+			this.internal = true;
+			this.source = this.canvas.toDataURL('image/png', 1);
+			this.updateImageFromCanvas();
+		}
+		if (UVEditor.vue.texture == this) UVEditor.updateOverlayCanvas();
+	}
+	/**
+	 * Draw the visible layers onto the texture canvas
+	 * @param {boolean} [leave_out_separate] Leave out the layers that are saved as their own files
+	 */
+	compositeLayers(leave_out_separate = false) {
 		this.canvas.width = this.width;
 		this.canvas.height = this.height;
 		for (let layer of this.layers) {
 			if (layer.type != 'pixel_layer' || layer.visible == false || layer.opacity == 0) continue;
+			if (leave_out_separate && layer.export_separately) continue;
 			if (layer.blend_mode == 'alpha_mask') {
 				let opacity_factor = layer.opacity / 100;
 				let mask = layer.ctx.getImageData(0, 0, layer.canvas.width, layer.canvas.height);
@@ -1837,16 +1863,44 @@ export class Texture {
 		}
 		this.ctx.filter = '';
 		this.ctx.globalCompositeOperation = 'source-over';
-
-		if (!Format.image_editor && this.getMaterial()) {
-			this.getOwnMaterial().map.needsUpdate = true;
+	}
+	/**
+	 * Layers that are saved as their own files next to the texture's file instead of being part of it,
+	 * for example a wound to show on top of the texture in a game
+	 */
+	getSeparateExportLayers() {
+		if (!this.layers_enabled) return [];
+		return this.layers.filter(layer => layer.type == 'pixel_layer' && layer.export_separately);
+	}
+	/**
+	 * File a separately exported layer is saved to: the texture's file name with the layer name added, like fish_wound.png
+	 */
+	getSeparateLayerPath(texture_path, layer) {
+		let extension = PathModule.extname(texture_path);
+		let base_name = PathModule.basename(texture_path, extension);
+		let layer_name = layer.name.trim().replace(/[\\/:*?"<>|\s]+/g, '_') || 'layer';
+		return PathModule.join(PathModule.dirname(texture_path), `${base_name}_${layer_name}.png`);
+	}
+	/**
+	 * Image of one layer on its own, on a transparent canvas the size of the texture
+	 */
+	getSeparateLayerDataURL(layer) {
+		let canvas = document.createElement('canvas');
+		canvas.width = this.width;
+		canvas.height = this.height;
+		let ctx = canvas.getContext('2d');
+		ctx.imageSmoothingEnabled = false;
+		ctx.filter = `opacity(${layer.opacity / 100})`;
+		ctx.drawImage(layer.canvas, layer.offset[0], layer.offset[1], layer.scaled_width, layer.scaled_height);
+		return canvas.toDataURL('image/png', 1);
+	}
+	writeSeparateLayers(texture_path) {
+		for (let layer of this.getSeparateExportLayers()) {
+			Blockbench.writeFile(this.getSeparateLayerPath(texture_path, layer), {
+				content: this.getSeparateLayerDataURL(layer),
+				savetype: 'image'
+			});
 		}
-		if (update_data_url) {
-			this.internal = true;
-			this.source = this.canvas.toDataURL('image/png', 1);
-			this.updateImageFromCanvas();
-		}
-		if (UVEditor.vue.texture == this) UVEditor.updateOverlayCanvas();
 	}
 	updateChangesAfterEdit() {
 		if (this.layers_enabled) {
