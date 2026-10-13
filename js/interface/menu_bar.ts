@@ -299,6 +299,7 @@ export const MenuBar = {
 			'add_group',
 			new MenuSeparator('modify_elements'),
 			'duplicate',
+			'duplicate_mirrored',
 			'rename',
 			'find_replace',
 			'unlock_everything',

@@ -2780,6 +2780,7 @@ Interface.definePanels(function() {
 					'uv_transparent',
 					'uv_mirror_x',
 					'uv_mirror_y',
+					'mirror_uv_to_other_side',
 					'uv_rotation',
 					//Box
 					'toggle_mirror_uv',

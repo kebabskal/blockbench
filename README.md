@@ -33,12 +33,14 @@ All of these are in the Preview Options popover, work in every view mode and are
 - **Pivots move along with elements**, so moved elements keep their pivot relative to their geometry.
 - **Add Element** in a group's context menu, and an **Add Mesh shape submenu** (Cube, Plane, Cylinder, ...) that adds the shape directly.
 - **Ctrl+G with one element selected** puts it into the new group.
+- **Duplicate Mirrored (Ctrl+Shift+D):** duplicates the selected elements and mirrors the copies across the X center line of their parent group (its pivot), or the model center at the root. Build one fin and get the other side in one step, with its UVs mirrored too. In the element context menu and the Edit menu.
 
 ### Outliner
 - **Alt-click an eye to solo** that object or group. Alt-click it again to restore the previous visibility.
 - **Hide Everything Except Selection (I)** also works in Animate mode.
 
 ### Painting and 2D editor
+- **Mirror UVs to Other Side (Alt+M):** UV and paint one side of something symmetrical, then copy those UVs, mirrored, onto the other side. For single cubes that span both sides, like a fish body or a fin, look at the side you painted and the face facing the camera is copied onto the opposite face, in the cube's own rotation. Cubes with a matching cube on the other side of the model (found like Mirror Modeling finds them) copy all their faces onto it: select one side to copy that side, or both and the side the camera is on gets copied. Also in the cube context menu and the UV editor toolbar.
 - **Select Face Pixels:** selects the texture pixels of the selected faces, so adjustments only affect those faces.
 - **Selection outlines in Paint mode** can be toggled from the paint toolbar.
 - **Scroll to zoom** in the 2D editor without holding Ctrl (Shift scrolls instead).

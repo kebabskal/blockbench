@@ -381,6 +381,7 @@ Outliner.control_menu_group = [
 	'copy',
 	'paste',
 	'duplicate',
+	'duplicate_mirrored',
 	'group_elements',
 	'move_to_group',
 ]

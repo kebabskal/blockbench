@@ -993,6 +993,7 @@ export class Cube extends OutlinerElement {
 		'convert_to_mesh',
 		'update_autouv',
 		'cube_uv_mode',
+		'mirror_uv_to_other_side',
 		'allow_element_mirror_modeling',
 		'set_element_marker_color',
 		"randomize_marker_colors",
