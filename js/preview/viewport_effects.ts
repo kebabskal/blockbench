@@ -22,6 +22,13 @@ uniform mat4 cameraProjectionInverse;
 vec3 getViewPosition(vec2 uv, float depth) {
 	vec4 view = cameraProjectionInverse * vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
 	return view.xyz / view.w;
+}
+// How large things look at a view position, as the distance a perspective camera would see them from.
+// Tolerances scale with this. In orthographic views the distance to the camera says nothing about
+// how large things look, so it is the same everywhere there.
+uniform float orthoScale;
+float depthScale(float view_z) {
+	return orthoScale > 0.0 ? orthoScale : abs(view_z);
 }`;
 
 const PREPASS_VERTEX = `
@@ -142,7 +149,7 @@ void main() {
 			if (sample_depth >= 1.0) continue;
 			float z = getViewPosition(uv, sample_depth).z;
 			// Don't blur across depth edges
-			float weight = 1.0 - smoothstep(0.0, 0.05 * abs(center_z), abs(z - center_z));
+			float weight = 1.0 - smoothstep(0.0, 0.05 * depthScale(center_z), abs(z - center_z));
 			sum += texture2D(tAO, uv).r * weight;
 			weight_sum += weight;
 		}
@@ -261,9 +268,9 @@ float shadowVisibility(vec3 world_position) {
 float outlineAmount(float depth) {
 	vec3 center_position = depth < 1.0 ? getViewPosition(vUv, depth) : vec3(0.0, 0.0, -1.0e9);
 	vec3 center_normal = depth < 1.0 ? normalize(texture2D(tNormal, vUv).xyz * 2.0 - 1.0) : vec3(0.0, 0.0, 1.0);
-	float threshold = 0.02 * abs(center_position.z) + 0.3;
+	float threshold = 0.02 * depthScale(center_position.z) + 0.3;
 	// Only has to reject points on the same surface, so it is much tighter, otherwise low details like thin walls lose their outline
-	float plane_threshold = 0.004 * abs(center_position.z) + 0.05;
+	float plane_threshold = 0.004 * depthScale(center_position.z) + 0.05;
 	for (int i = 0; i < 16; i++) {
 		float angle = float(i) / 16.0 * 6.2831853;
 		vec2 direction = vec2(cos(angle), sin(angle));
@@ -300,8 +307,8 @@ float outlineAmount(float depth) {
  * which gives a crisp band along the edges facing the light, like a backlight catching the silhouette
  */
 float rimAmount(vec3 position, vec3 normal) {
-	float threshold = 0.03 * abs(position.z) + 0.5;
-	float plane_threshold = 0.004 * abs(position.z) + 0.05;
+	float threshold = 0.03 * depthScale(position.z) + 0.5;
+	float plane_threshold = 0.004 * depthScale(position.z) + 0.05;
 	float amount = 0.0;
 	for (int i = 0; i < 7; i++) {
 		float t = float(i) / 3.0 - 1.0;
@@ -339,7 +346,7 @@ void main() {
 			// Screen space curvature from the change of the normals across neighboring pixels
 			vec2 step_x = vec2(cavityWidth / resolution.x, 0.0);
 			vec2 step_y = vec2(0.0, cavityWidth / resolution.y);
-			float edge_limit = 0.03 * abs(position.z) + cavityWidth * 0.5;
+			float edge_limit = 0.03 * depthScale(position.z) + cavityWidth * 0.5;
 			vec3 normals[4];
 			vec2 offsets[4];
 			offsets[0] = step_x; offsets[1] = -step_x; offsets[2] = step_y; offsets[3] = -step_y;
@@ -437,6 +444,18 @@ const quad_camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
 quad.frustumCulled = false;
 
+/**
+ * For orthographic cameras: the distance at which a perspective camera with the field of view setting
+ * shows things at the same size, so effect tolerances match what they are in perspective.
+ * 0 for perspective cameras, which use the actual distance of each pixel.
+ */
+function getOrthoScale(camera: THREE.Camera): number {
+	if (!(camera instanceof THREE.OrthographicCamera)) return 0;
+	let view_height = (camera.top - camera.bottom) / camera.zoom;
+	let fov = Math.degToRad((settings.fov.value as number) || 45);
+	return Math.abs(view_height) / (2 * Math.tan(fov / 2));
+}
+
 function createPassMaterial(fragment_shader: string, uniforms: Record<string, any>) {
 	let material = new THREE.ShaderMaterial({
 		uniforms,
@@ -454,6 +473,7 @@ const ao_material = createPassMaterial(AO_FRAGMENT, {
 	tNormal: {value: null},
 	cameraProjection: {value: new THREE.Matrix4()},
 	cameraProjectionInverse: {value: new THREE.Matrix4()},
+	orthoScale: {value: 0},
 	radius: {value: 6},
 });
 const blur_material = createPassMaterial(BLUR_FRAGMENT, {
@@ -461,6 +481,7 @@ const blur_material = createPassMaterial(BLUR_FRAGMENT, {
 	tDepth: {value: null},
 	resolution: {value: new THREE.Vector2()},
 	cameraProjectionInverse: {value: new THREE.Matrix4()},
+	orthoScale: {value: 0},
 });
 const composite_material = createPassMaterial(COMPOSITE_FRAGMENT, {
 	tColor: {value: null},
@@ -475,6 +496,7 @@ const composite_material = createPassMaterial(COMPOSITE_FRAGMENT, {
 	GROUND_ON: {value: false},
 	resolution: {value: new THREE.Vector2()},
 	cameraProjectionInverse: {value: new THREE.Matrix4()},
+	orthoScale: {value: 0},
 	cameraWorld: {value: new THREE.Matrix4()},
 	aoStrength: {value: 1},
 	ridge: {value: 1},
@@ -797,6 +819,8 @@ export const ViewportEffects = {
 				renderer.autoClear = true;
 			}
 
+			let ortho_scale = getOrthoScale(camera);
+
 			// 4. Ambient occlusion
 			if (ao_on) {
 				ao_material.uniforms.tDepth.value = targets.gbuffer.depthTexture;
@@ -810,6 +834,7 @@ export const ViewportEffects = {
 				blur_material.uniforms.tDepth.value = targets.gbuffer.depthTexture;
 				blur_material.uniforms.resolution.value.set(width, height);
 				blur_material.uniforms.cameraProjectionInverse.value.copy(camera.projectionMatrixInverse);
+				blur_material.uniforms.orthoScale.value = ortho_scale;
 				renderQuad(renderer, blur_material, targets.ao_blur);
 			}
 
@@ -827,6 +852,7 @@ export const ViewportEffects = {
 			uniforms.GROUND_ON.value = ground_on;
 			uniforms.resolution.value.set(width, height);
 			uniforms.cameraProjectionInverse.value.copy(camera.projectionMatrixInverse);
+			uniforms.orthoScale.value = ortho_scale;
 			uniforms.cameraWorld.value.copy(camera.matrixWorld);
 			uniforms.aoStrength.value = (settings.preview_ssao_strength.value as number) / 100;
 			uniforms.ridge.value = (settings.preview_cavity_ridge.value as number) / 100;
