@@ -805,10 +805,10 @@ class ArmatureBoneAnimator extends BoneAnimator {
 	ArmatureBone.animator = ArmatureBoneAnimator;
 
 /**
- * World rotation that a locked IK target keeps: its own keyframed rotation on top of its default pose,
- * in the space of the null object's parent. Rotating bones above it, like the hips, doesn't roll it along
+ * World rotation of the frame that a locked IK target's own rotation is applied in: the space of the null object's
+ * parent, with the bones in between in their default pose. Null if the target isn't inside the null object's parent
  */
-function getLockedTargetQuaternion(target, null_object) {
+function getIKLockFrame(target, null_object) {
 	let space = null_object.parent instanceof OutlinerNode ? null_object.parent : 'root';
 	let ancestors = [];
 	let node = target.parent;
@@ -816,17 +816,35 @@ function getLockedTargetQuaternion(target, null_object) {
 		ancestors.push(node);
 		node = node.parent;
 	}
-	// The target isn't inside the null object's parent, so there's no shared space to keep it in
-	if (node !== space) {
-		return target.mesh.getWorldQuaternion(new THREE.Quaternion());
-	}
+	if (node !== space) return null;
 	let space_object = ancestors.length ? ancestors.last().scene_object.parent : target.scene_object.parent;
 	let quaternion = space_object.getWorldQuaternion(new THREE.Quaternion());
 	for (let i = ancestors.length - 1; i >= 0; i--) {
 		let rest = ancestors[i].scene_object.fix_rotation;
 		if (rest) quaternion.multiply(new THREE.Quaternion().setFromEuler(rest));
 	}
-	return quaternion.multiply(target.scene_object.quaternion);
+	return quaternion;
+}
+/**
+ * World rotation that a locked IK target keeps: its own keyframed rotation on top of its default pose,
+ * in the space of the null object's parent. Rotating bones above it, like the hips, doesn't roll it along
+ */
+function getLockedTargetQuaternion(target, null_object) {
+	let frame = getIKLockFrame(target, null_object);
+	// The target isn't inside the null object's parent, so there's no shared space to keep it in
+	if (!frame) return target.mesh.getWorldQuaternion(new THREE.Quaternion());
+	return frame.multiply(target.scene_object.quaternion);
+}
+/**
+ * If the node is the target of an active IK chain with a locked rotation, the frame its rotation is applied in
+ */
+export function getActiveIKLockFrame(node) {
+	if (!node || typeof NullObject == 'undefined') return null;
+	let null_object = NullObject.all.find(null_object => null_object.ik_target == node.uuid && null_object.lock_ik_target_rotation);
+	if (!null_object) return null;
+	// IK only runs when the null object is animated
+	if (!Animation.selected?.animators[null_object.uuid]?.keyframes.length) return null;
+	return getIKLockFrame(node, null_object);
 }
 
 export class NullObjectAnimator extends BoneAnimator {

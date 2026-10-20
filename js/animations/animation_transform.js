@@ -1,5 +1,6 @@
 import { getEditTransformSpace } from "../modeling/transform/edit_transform";
 import { TransformerModule } from "../modeling/transform/transform_modules";
+import { getActiveIKLockFrame } from "./timeline_animators";
 
 function displayDistance(number) {
 	Blockbench.setCursorTooltip(trimFloatNumber(number));
@@ -95,9 +96,17 @@ new TransformerModule('animation', {
 			difference = 0;
 		}
 
-		let {mesh} = Group.first_selected || ((Outliner.selected[0] && Outliner.selected[0].constructor.animator) ? Outliner.selected[0] : undefined);
+		let node = Group.first_selected || ((Outliner.selected[0] && Outliner.selected[0].constructor.animator) ? Outliner.selected[0] : undefined);
+		let {mesh} = node;
 
 		let updateRotationKeyframeFromMesh = () => {
+			// A locked IK target applies its rotation in its own frame instead of its parent's, so convert into that
+			// frame. Otherwise the keyframe and the displayed rotation disagree and the bone spins while dragging
+			let lock_frame = getActiveIKLockFrame(node);
+			if (lock_frame) {
+				let parent_rotation = mesh.parent.getWorldQuaternion(new THREE.Quaternion());
+				mesh.quaternion.premultiply(parent_rotation).premultiply(lock_frame.invert());
+			}
 			let old_rotation = mesh.pre_rotation ?? mesh.fix_rotation;
 			let rotation = mesh.rotation;
 			if (transform_keyframes[0].animator.quaternion_interpolation) {
