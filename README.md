@@ -55,6 +55,7 @@ All of these are in the Preview Options popover, work in every view mode and are
   - **Lock IK Target Rotation** keeps the foot level when the hips rotate: the target keeps its default orientation in the null object's parent space, plus its own keyframed rotation, instead of rolling along with the bones above it.
   - **IK Weight** is a keyframe channel on the null object (0 to 1) that blends between IK and the keyframed (FK) pose.
   - IK settings can be edited in the Element panel in Animate mode.
+  - **IK markers:** null objects used as IK targets get a larger yellow crosshair and poles an orange diamond. Both draw on top of the model and win clicks against the geometry in front of them. A line connects the end of each chain to its target, so you can see when it can't reach, and a dashed line connects the bending joint to its pole. Toggle with **Show IK Markers** in the view options.
   - Exports and Bake IK Animation match the preview, including the blend with keyframed rotations.
 
 ### Interface

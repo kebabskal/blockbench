@@ -526,6 +526,7 @@ export const Canvas = {
 		if (typeof ArmatureBone != 'undefined') ArmatureBone.all.forEach(bone => hide(bone.mesh));
 		if (typeof Locator != 'undefined') Locator.all.forEach(locator => hide(locator.mesh?.sprite));
 		if (typeof NullObject != 'undefined') NullObject.all.forEach(null_object => hide(null_object.mesh));
+		hide(Canvas.ik_guides);
 		try {
 			cb();
 		} finally {

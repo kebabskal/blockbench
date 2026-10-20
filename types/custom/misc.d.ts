@@ -106,6 +106,7 @@ interface BlockbenchEventMap {
 	update_view: UpdateViewOptions
 	update_camera_position: {preview: Preview}
 	render_frame: {}
+	before_render_frame: {}
 	construct_model_loader: {loader: ModelLoader}
 	delete_model_loader: {loader: ModelLoader}
 	update_recent_project_data: {data: RecentProjectData}

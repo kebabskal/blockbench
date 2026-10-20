@@ -2164,7 +2164,7 @@ StateMemory.init('viewport_background_color', 'string');
 // Viewport whose options are being edited
 let view_options_preview: Preview = null;
 const EFFECT_SETTINGS = [
-	'element_highlight', 'selection_display', 'clean_navigation', 'preview_effects_in_paint',
+	'element_highlight', 'selection_display', 'clean_navigation', 'show_ik_markers', 'preview_effects_in_paint',
 	'preview_prototype', 'preview_prototype_color', 'preview_prototype_size', 'preview_prototype_contrast',
 	'preview_shadows', 'preview_shadow_strength', 'preview_shadow_softness', 'preview_light_direction', 'preview_light_height', 'preview_ground_shadow',
 	'preview_ssao', 'preview_ssao_radius', 'preview_ssao_strength',
@@ -2233,6 +2233,7 @@ export const ViewOptionsDialog = new ConfigDialog('preview_view_options', {
 		pixel_grid: { label: 'settings.pixel_grid', condition: () => !Modes.paint, type: 'checkbox', style: 'toggle_switch' },
 		painting_grid: { label: 'settings.painting_grid', condition: () => Modes.paint, type: 'checkbox', style: 'toggle_switch' },
 		show_element_markers: { label: 'dialog.preview_options.show_element_markers', type: 'checkbox', style: 'toggle_switch', value: true, description: 'dialog.preview_options.show_element_markers.desc' },
+		show_ik_markers: { label: 'settings.show_ik_markers', type: 'checkbox', style: 'toggle_switch', description: 'settings.show_ik_markers.desc', condition: () => Format.animation_mode },
 		show_gizmos: { label: 'dialog.preview_options.show_gizmos', type: 'checkbox', style: 'toggle_switch', value: true },
 		clean_navigation: {label: 'settings.clean_navigation', type: 'checkbox', style: 'toggle_switch', description: 'settings.clean_navigation.desc'},
 		element_highlight: {label: 'settings.element_highlight', type: 'inline_select', options: {
@@ -2697,6 +2698,8 @@ export function animate() {
 	if (Preview.selected) {
 		WinterskyScene.updateFacingRotation(Preview.selected.camera);
 	}
+	// Last chance to update helpers that follow the animated pose before anything is drawn
+	Blockbench.dispatchEvent('before_render_frame', {});
 	Preview.all.forEach(function(prev) {
 		if (prev.canvas.isConnected) {
 			prev.render()

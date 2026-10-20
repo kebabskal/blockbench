@@ -143,6 +143,7 @@ function setupSettings() {
 	new Setting('audio_scrubbing',					{category: 'preview', value: true});
 	new Setting('save_view_per_tab',				{category: 'preview', value: true});
 	new Setting('clean_navigation',					{category: 'preview', value: true});
+	new Setting('show_ik_markers',					{category: 'preview', value: true, onChange() {window.refreshIKMarkers?.()}});
 	// Viewport effects, see preview/viewport_effects.ts
 	new Setting('preview_effects_in_paint',		{category: 'preview', value: true});
 	new Setting('preview_prototype',				{category: 'preview', value: false, onChange() {Canvas.updatePrototypeMaterials()}});
