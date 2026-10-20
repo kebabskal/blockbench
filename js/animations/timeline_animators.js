@@ -804,6 +804,31 @@ class ArmatureBoneAnimator extends BoneAnimator {
 	}
 	ArmatureBone.animator = ArmatureBoneAnimator;
 
+/**
+ * World rotation that a locked IK target keeps: its own keyframed rotation on top of its default pose,
+ * in the space of the null object's parent. Rotating bones above it, like the hips, doesn't roll it along
+ */
+function getLockedTargetQuaternion(target, null_object) {
+	let space = null_object.parent instanceof OutlinerNode ? null_object.parent : 'root';
+	let ancestors = [];
+	let node = target.parent;
+	while (node instanceof OutlinerNode && node !== space) {
+		ancestors.push(node);
+		node = node.parent;
+	}
+	// The target isn't inside the null object's parent, so there's no shared space to keep it in
+	if (node !== space) {
+		return target.mesh.getWorldQuaternion(new THREE.Quaternion());
+	}
+	let space_object = ancestors.length ? ancestors.last().scene_object.parent : target.scene_object.parent;
+	let quaternion = space_object.getWorldQuaternion(new THREE.Quaternion());
+	for (let i = ancestors.length - 1; i >= 0; i--) {
+		let rest = ancestors[i].scene_object.fix_rotation;
+		if (rest) quaternion.multiply(new THREE.Quaternion().setFromEuler(rest));
+	}
+	return quaternion.multiply(target.scene_object.quaternion);
+}
+
 export class NullObjectAnimator extends BoneAnimator {
 	constructor(uuid, animation, name) {
 		super(uuid, animation);
@@ -889,7 +914,7 @@ export class NullObjectAnimator extends BoneAnimator {
 		if (!target.isChildOf(source) && source != 'root') return;
 		let target_original_quaternion = null_object.lock_ik_target_rotation &&
 			(target instanceof Group || target instanceof ArmatureBone) &&
-			target.mesh.getWorldQuaternion(new THREE.Quaternion());
+			getLockedTargetQuaternion(target, null_object);
 
 		while (current !== source) {
 			bones.push(current);

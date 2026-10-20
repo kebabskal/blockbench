@@ -52,6 +52,7 @@ All of these are in the Preview Options popover, work in every view mode and are
 - **Better IK:**
   - The whole chain bends on one consistent hinge, so the shin no longer twists differently from the thigh.
   - **IK Pole Angle** rotates the bend plane, and **IK Hinge Axis** picks the axis the chain bends around. The front of the chain faces the pole.
+  - **Lock IK Target Rotation** keeps the foot level when the hips rotate: the target keeps its default orientation in the null object's parent space, plus its own keyframed rotation, instead of rolling along with the bones above it.
   - **IK Weight** is a keyframe channel on the null object (0 to 1) that blends between IK and the keyframed (FK) pose.
   - IK settings can be edited in the Element panel in Animate mode.
   - Exports and Bake IK Animation match the preview, including the blend with keyframed rotations.
