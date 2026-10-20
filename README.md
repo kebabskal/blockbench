@@ -49,6 +49,7 @@ All of these are in the Preview Options popover, work in every view mode and are
 ### Animation
 - **Seamless loops:** looping animations in the generic format carry motion across the loop point, so bones don't stop there. Smooth and bezier curves wrap around, and a bone doesn't need keyframes at the start and end.
 - **Arrow keys move keyframes around the loop:** keyframes pushed past the end come back in at the start, which makes delaying a bone by a few frames easy.
+- **Box selection in the timeline matches what you see:** keyframes of collapsed rows are picked from the row's header, where they're drawn, and show as selected there. Before, they were picked from where their hidden channel rows would be, so a box over the next row could silently grab them and drag them along.
 - **Better IK:**
   - The whole chain bends on one consistent hinge, so the shin no longer twists differently from the thigh.
   - **IK Pole Angle** rotates the bend plane, and **IK Hinge Axis** picks the axis the chain bends around. The front of the chain faces the pole.

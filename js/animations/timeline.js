@@ -156,6 +156,9 @@ export const Timeline = {
 			for (var animator of Timeline.animators) {
 				var node = $('#timeline_body_inner .animator[uuid=' + animator.uuid + ']').get(0)
 				var offset = node && node.offsetTop;
+				// Same rules as the template: a channel gets its own row, or its keyframes show in the head bar
+				let inOwnRow = channel => animator.expanded && channels[channel] != false && Condition(animator.channels[channel].condition, animator) && (!channels.hide_empty || animator[channel].length);
+				let inHeadBar = channel => !(animator.expanded && channels[channel] != false && (!channels.hide_empty || animator[channel].length));
 				for (var kf of animator.keyframes) {
 					if (Timeline.selector.selected_before.includes(kf)) {
 						Timeline.selected.push(kf);
@@ -170,14 +173,19 @@ export const Timeline = {
 					) {
 						if (!Timeline.vue.graph_editor_open) {
 
-							var channel_index = 0 //animator.channels.indexOf(kf.channel);
-							for (var channel in animator.channels) {
-								if (kf.channel == channel) break;
-								if (channels[channel] != false && (!channels.hide_empty || animator[channel].length)) {
-									channel_index++;
+							if (inOwnRow(kf.channel)) {
+								var channel_index = 0;
+								for (var channel in animator.channels) {
+									if (kf.channel == channel) break;
+									if (inOwnRow(channel)) channel_index++;
 								}
+								var height = offset + channel_index*24 + 36;
+							} else if (inHeadBar(kf.channel)) {
+								// Collapsed animators show their keyframes in the head bar
+								var height = offset + 12;
+							} else {
+								continue;
 							}
-							var height = offset + channel_index*24 + 36;
 
 						} else {
 							var height = Timeline.vue.graph_offset - (kf.display_value || 0) * Timeline.vue.graph_size + Timeline.vue.scroll_top;
@@ -1773,6 +1781,7 @@ Interface.definePanels(() => {
 												v-for="keyframe in animator[channel]"
 												v-bind:style="{left: (8 + keyframe.time * size) + 'px'}"
 												class="keyframe"
+												:class="{selected: keyframe.selected}"
 												v-bind:id="'_'+keyframe.uuid"
 											>
 												<i class="material-icons">lens</i>
