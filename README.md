@@ -102,6 +102,8 @@ Use this command or press Ctrl + Shift + B to launch Blockbench in Electron:
 
 `npm run dev`
 
+On Windows you can also double-click `dev.bat`, which installs the dependencies if needed and runs `npm run dev`.
+
 To enable debugging in VS Code, switch to the **Run & Debug** tab, select the **"Debug Renderer"** configuration, and press the green arrow button to launch.
 Now you can set breakpoints and debug inside VSCode.
 
