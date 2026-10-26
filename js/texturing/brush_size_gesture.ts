@@ -5,6 +5,7 @@
 type Gesture = {
 	tool: Tool
 	start: [number, number]
+	pointer_id: number
 	start_size: number
 	start_softness: number | null
 	preview: Preview | null
@@ -16,9 +17,17 @@ type Gesture = {
 let gesture: Gesture | null = null;
 // At most two brush sizes per screen pixel of dragging
 const MIN_PIXELS_PER_TEXEL = 1;
-// After the gesture, the rest of the right click shouldn't reach the viewport, which would open the context menu
-let suppress_context_menu = false;
-let swallow_mouseup = false;
+// After the gesture, the rest of the right click shouldn't reach the viewport, which would open the context menu.
+// Only the release of the pointer that did the gesture is held back, and only briefly: browsers skip the mouse events
+// after a canceled pointerdown, and pens may never send them, so waiting for them would block every later release
+// and leave the painter drawing
+const RELEASE_WINDOW = 400;
+let release_pointer: number | null = null;
+let quiet_until = 0;
+function holdBackRelease(pointer_id: number | null) {
+	release_pointer = pointer_id;
+	quiet_until = performance.now() + RELEASE_WINDOW;
+}
 
 function getBrushTool(): Tool | null {
 	if (!Modes.paint) return null;
@@ -99,6 +108,7 @@ function start(event: PointerEvent, preview: Preview | null, in_uv_editor: boole
 	gesture = {
 		tool,
 		start: [event.clientX, event.clientY],
+		pointer_id: event.pointerId,
 		start_size: BarItems.slider_brush_size.get() as number,
 		start_softness: tool.brush.softness ? BarItems.slider_brush_softness.get() as number : null,
 		preview,
@@ -165,24 +175,26 @@ window.addEventListener('mousedown', (event: MouseEvent) => {
 	event.stopImmediatePropagation();
 }, true);
 window.addEventListener('pointerup', (event: PointerEvent) => {
-	if (!gesture && !swallow_mouseup) return;
-	event.stopImmediatePropagation();
-	if (gesture) {
-		suppress_context_menu = true;
-		swallow_mouseup = true;
+	if (gesture && event.pointerId === gesture.pointer_id) {
+		event.stopImmediatePropagation();
+		holdBackRelease(null);
 		end(false);
+	} else if (!gesture && release_pointer !== null && event.pointerId === release_pointer) {
+		// Released after the gesture was canceled with Escape
+		event.stopImmediatePropagation();
+		holdBackRelease(null);
 	}
 }, true);
 window.addEventListener('mouseup', (event: MouseEvent) => {
-	if (!gesture && !swallow_mouseup) return;
-	event.stopImmediatePropagation();
-	if (event.button === 2) swallow_mouseup = false;
+	if (gesture || (event.button === 2 && performance.now() < quiet_until)) {
+		event.stopImmediatePropagation();
+	}
 }, true);
 window.addEventListener('contextmenu', (event: MouseEvent) => {
-	if (!suppress_context_menu && !gesture) return;
-	suppress_context_menu = false;
-	event.preventDefault();
-	event.stopImmediatePropagation();
+	if (gesture || performance.now() < quiet_until) {
+		event.preventDefault();
+		event.stopImmediatePropagation();
+	}
 }, true);
 // Alt keeps repeating while held, and each repeat would swap the brush to the color picker again, hiding the outline
 for (let type of ['keydown', 'keyup']) {
@@ -203,8 +215,7 @@ window.addEventListener('keydown', (event: KeyboardEvent) => {
 	if (gesture && event.key == 'Escape') {
 		event.preventDefault();
 		event.stopImmediatePropagation();
-		suppress_context_menu = true;
-		swallow_mouseup = true;
+		holdBackRelease(gesture.pointer_id);
 		end(true);
 	}
 }, true);
