@@ -184,6 +184,21 @@ window.addEventListener('contextmenu', (event: MouseEvent) => {
 	event.preventDefault();
 	event.stopImmediatePropagation();
 }, true);
+// Alt keeps repeating while held, and each repeat would swap the brush to the color picker again, hiding the outline
+for (let type of ['keydown', 'keyup']) {
+	window.addEventListener(type, (event: KeyboardEvent) => {
+		if (gesture && event.key == 'Alt') {
+			event.preventDefault();
+			event.stopImmediatePropagation();
+		}
+	}, true);
+}
+// The 2D editor hides its brush outline when the pointer leaves it, for example when crossing the readout
+for (let type of ['mouseleave', 'mouseout', 'pointerleave', 'pointerout']) {
+	window.addEventListener(type, (event: Event) => {
+		if (gesture) event.stopImmediatePropagation();
+	}, true);
+}
 window.addEventListener('keydown', (event: KeyboardEvent) => {
 	if (gesture && event.key == 'Escape') {
 		event.preventDefault();
