@@ -33,6 +33,7 @@ All of these are in the Preview Options popover, work in every view mode and are
 - **Pivots move along with elements**, so moved elements keep their pivot relative to their geometry.
 - **Add Element** in a group's context menu, and an **Add Mesh shape submenu** (Cube, Plane, Cylinder, ...) that adds the shape directly.
 - **Ctrl+G with one element selected** puts it into the new group.
+- **Keep UV Density** (Edit menu, on by default): moving or resizing mesh vertices with the gizmo extends the UVs with the faces instead of stretching the texture, like cubes do. The side that doesn't move keeps its UVs, and faces that only move as a whole keep them entirely. Works with any existing UV layout.
 - **Duplicate Mirrored (Ctrl+Shift+D):** duplicates the selected elements and mirrors the copies across the X center line of their parent group (its pivot), or the model center at the root. Build one fin and get the other side in one step, with its UVs mirrored too. In the element context menu and the Edit menu.
 
 ### Outliner

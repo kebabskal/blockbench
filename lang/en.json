@@ -2088,6 +2088,8 @@
 	"action.merge_splines": "Merge Splines",
 	"action.merge_splines.desc": "Merge multiple splines into one",
 	"action.proportional_editing": "Proportional Editing",
+	"action.keep_mesh_uv_density": "Keep UV Density",
+	"action.keep_mesh_uv_density.desc": "When moving or resizing mesh vertices, extend the UVs with the faces instead of stretching the texture, like cubes do",
 	"action.proportional_editing.desc": "Proportionally affect surrounding vertices when editing parts of a mesh",
 	"action.proportional_editing_range": "Proportional Editing Range",
 	"action.proportional_editing_range.desc": "Adjust the range for proportional editing",

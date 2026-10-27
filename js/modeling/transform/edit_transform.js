@@ -1,4 +1,5 @@
 import { TransformerModule } from "./transform_modules";
+import { applyMeshUVMaps, captureMeshUVMaps } from "../mesh/uv_density";
 import { getPivotObjects, getRotationObjects, getSelectedMovingElements, moveElementsInSpace } from "../transform";
 
 function displayDistance(number) {
@@ -324,6 +325,11 @@ new TransformerModule('edit', {
 		} else {
 			Undo.initEdit({elements: getSelectedMovingElements(), groups: Group.all.filter(g => g.selected)});
 		}
+		if (BarItems.keep_mesh_uv_density?.value && (tool_id == 'move_tool' || tool_id == 'resize_tool')) {
+			Mesh.selected.forEach(mesh => {
+				mesh.temp_data.uv_density_maps = captureMeshUVMaps(mesh);
+			})
+		}
 	},
 	onMove(context) {
 		let {axis, axis_number, value, second_axis, second_axis_number} = context;
@@ -470,6 +476,12 @@ new TransformerModule('edit', {
 				Animator.preview();
 			}
 		}
+		// Keep the texture pixel size of mesh faces whose shape changed
+		Mesh.selected.forEach(mesh => {
+			if (mesh.temp_data.uv_density_maps && applyMeshUVMaps(mesh, mesh.temp_data.uv_density_maps)) {
+				Mesh.preview_controller.updateUV(mesh);
+			}
+		})
 	},
 	onEnd(context) {
 		let tool_id = Toolbox.selected.id;
@@ -500,10 +512,12 @@ new TransformerModule('edit', {
 				Undo.finishEdit('Move selection')
 			}
 		}
+		Mesh.selected.forEach(mesh => delete mesh.temp_data.uv_density_maps);
 		autoFixMeshEdit()
 		updateSelection()
 	},
 	onCancel(context) {
+		Mesh.selected.forEach(mesh => delete mesh.temp_data.uv_density_maps);
 		Undo.cancelEdit(true);
 	}
 });

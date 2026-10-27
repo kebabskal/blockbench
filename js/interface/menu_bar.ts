@@ -309,6 +309,7 @@ export const MenuBar = {
 			new MenuSeparator('editing_mode'),
 			'proportional_editing',
 			'mirror_modeling',
+			'keep_mesh_uv_density',
 			new MenuSeparator('selection'),
 			'select_window',
 			'select_all',
