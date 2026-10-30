@@ -2088,6 +2088,8 @@
 	"action.merge_splines": "Merge Splines",
 	"action.merge_splines.desc": "Merge multiple splines into one",
 	"action.proportional_editing": "Proportional Editing",
+	"action.bevel_mesh_selection": "Bevel",
+	"action.bevel_mesh_selection.desc": "Replace the selected edges with a strip of faces, or the selected vertices with a small face",
 	"action.keep_mesh_uv_density": "Keep UV Density",
 	"action.keep_mesh_uv_density.desc": "When moving or resizing mesh vertices, extend the UVs with the faces instead of stretching the texture, like cubes do",
 	"action.proportional_editing.desc": "Proportionally affect surrounding vertices when editing parts of a mesh",
@@ -2786,6 +2788,8 @@
 	"menu.paste.mesh_selection": "Mesh Selection",
 	"menu.paste.outliner": "Elements",
 
+	"edit.bevel.width": "Width",
+	"edit.bevel.segments": "Segments",
 	"edit.loop_cut.direction": "Direction",
 	"edit.loop_cut.offset": "Offset",
 	"edit.loop_cut.cuts": "Cuts",

@@ -513,6 +513,7 @@ export const BARS = {
 				'extrude_mesh_selection',
 				'inset_mesh_selection',
 				'loop_cut',
+				'bevel_mesh_selection',
 				'create_face',
 				'invert_face',
 				'_',
