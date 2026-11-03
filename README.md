@@ -107,6 +107,8 @@ Use this command or press Ctrl + Shift + B to launch Blockbench in Electron:
 
 On Windows you can also double-click `dev.bat`, which installs the dependencies if needed and runs `npm run dev`.
 
+To make double-clicked `.bbmodel` files open in this checkout instead of the installed Blockbench, run `register-bbmodel.bat` once (current user only). Run `register-bbmodel.bat /undo` to switch back. Files opened this way use the last build, so run `dev.bat` once after pulling changes.
+
 To enable debugging in VS Code, switch to the **Run & Debug** tab, select the **"Debug Renderer"** configuration, and press the green arrow button to launch.
 Now you can set breakpoints and debug inside VSCode.
 
