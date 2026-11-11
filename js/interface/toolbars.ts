@@ -500,6 +500,7 @@ export const BARS = {
 				'transform_space',
 				'rotation_space',
 				'transform_pivot_space',
+				'transform_pivot_point',
 				'selection_mode',
 				'spline_selection_mode',
 				'spline_handle_mode',

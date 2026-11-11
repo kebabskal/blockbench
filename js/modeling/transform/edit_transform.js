@@ -1,6 +1,7 @@
 import { TransformerModule } from "./transform_modules";
 import { applyMeshUVMaps, captureMeshUVMaps } from "../mesh/uv_density";
 import { getPivotObjects, getRotationObjects, getSelectedMovingElements, moveElementsInSpace } from "../transform";
+import { applyGroupRotation, applyGroupScale, endGroupTransform, getGroupPivot, getGroupSize, isGroupTransform, isGroupTransformRunning, startGroupTransform } from "./group_transform";
 
 function displayDistance(number) {
 	Blockbench.setCursorTooltip(trimFloatNumber(number));
@@ -113,8 +114,11 @@ new TransformerModule('edit', {
 					SplineGizmos.refreshGizmos();
 					attached_nodes.push(SplineMesh.selected[0]); // Replaces "scope.attach(spline)"
 				} else if (Outliner.selected.length) {
+					let group_transform = isGroupTransform();
 					Outliner.selected.forEach(element => {
-						if (
+						if (group_transform && element.getTypeBehavior('movable')) {
+							attached_nodes.push(element);
+						} else if (
 							(element.getTypeBehavior('movable') && Toolbox.selected.transformerMode == 'translate') ||
 							((element.getTypeBehavior('resizable')) && (Toolbox.selected.transformerMode == 'scale' || Toolbox.selected.transformerMode == 'stretch')) ||
 							(element.getTypeBehavior('rotatable') && Toolbox.selected.transformerMode == 'rotate')
@@ -128,6 +132,13 @@ new TransformerModule('edit', {
 			}
 		}
 		if (!attached_nodes.length) return false;
+
+		if (isGroupTransform()) {
+			// The whole selection turns around its center, along the world axes
+			Transformer.rotation_object = Outliner.selected[0];
+			Transformer.position.copy(getGroupPivot()).sub(scene.position);
+			return true;
+		}
 
 
 		if (Toolbox.selected.id == 'vertex_snap_tool' && (Outliner.selected.length || Group.first_selected)) {
@@ -230,7 +241,10 @@ new TransformerModule('edit', {
 			// Uniform scale by dragging the selection: snap the size change of the largest side to the grid
 			var snap_factor = canvasGridSize(event.shiftKey || Pressing.overrides.shift, event.ctrlOrCmd || Pressing.overrides.ctrl)
 			let largest_size = 0;
-			Outliner.selected.forEach(obj => {
+			if (isGroupTransform()) {
+				let size = getGroupSize();
+				largest_size = Math.max(size.x, size.y, size.z);
+			} else Outliner.selected.forEach(obj => {
 				if (!obj.getTypeBehavior('resizable')) return;
 				for (let axis_number = 0; axis_number < 3; axis_number++) {
 					largest_size = Math.max(largest_size, getUniformResizeSize(obj, axis_number));
@@ -330,13 +344,65 @@ new TransformerModule('edit', {
 				mesh.temp_data.uv_density_maps = captureMeshUVMaps(mesh);
 			})
 		}
+		if (isGroupTransform()) {
+			startGroupTransform();
+			this.group_angle = 0;
+		}
 	},
 	onMove(context) {
 		let {axis, axis_number, value, second_axis, second_axis_number} = context;
 		let tool_id = Toolbox.selected.id;
 		var difference = value - (this.previous_value||0)
 		
-		if (tool_id === 'move_tool') {
+		if (isGroupTransformRunning() && tool_id === 'resize_tool') {
+
+			let size = getGroupSize();
+			let largest_size = Math.max(size.x, size.y, size.z);
+			let pivot = getGroupPivot();
+			let factor = new THREE.Vector3(1, 1, 1);
+			let anchor = pivot.clone();
+			// Axes the selection is flat on are scaled relative to its largest side
+			let getFactor = (axis_number, growth) => {
+				let axis_size = size.getComponent(axis_number) > 0.001 ? size.getComponent(axis_number) : largest_size;
+				return axis_size ? Math.max(1 + growth / axis_size, 0) : 1;
+			}
+			if (context.uniform_factor !== undefined) {
+				factor.setScalar(value);
+			} else if (axis == 'e') {
+				factor.setScalar(getFactor(size.x >= size.y && size.x >= size.z ? 0 : (size.y >= size.z ? 1 : 2), value * 2));
+			} else if (second_axis) {
+				factor.setComponent(axis_number, getFactor(axis_number, value * 2));
+				factor.setComponent(second_axis_number, getFactor(second_axis_number, value * 2));
+			} else {
+				// Scales from the center, or with Alt from the opposite side
+				let from_side = (context.event?.altKey || Pressing.overrides.alt) && BarItems.swap_tools.keybind.key != 18;
+				let growth = value * context.direction;
+				factor.setComponent(axis_number, getFactor(axis_number, from_side ? growth : growth * 2));
+				if (from_side) {
+					anchor.setComponent(axis_number, pivot.getComponent(axis_number) - size.getComponent(axis_number) / 2 * context.direction);
+				}
+			}
+			applyGroupScale(factor, anchor);
+			if (context.uniform_factor !== undefined || axis == 'e') {
+				Blockbench.setCursorTooltip('×' + trimFloatNumber(factor.x, 3));
+			} else {
+				displayDistance(value * context.direction);
+			}
+			updateSelection()
+
+		} else if (isGroupTransformRunning() && tool_id === 'rotate_tool') {
+
+			let rotation_axis = axis_number == undefined
+				? context.rotate_normal.clone().normalize()
+				: new THREE.Vector3().setComponent(axis_number, 1);
+			// The angle wraps around at half a turn
+			let step = ((difference % 360) + 540) % 360 - 180;
+			this.group_angle = (this.group_angle || 0) + step;
+			applyGroupRotation(rotation_axis, this.group_angle);
+			Transformer.updateSelection()
+			displayDistance(this.group_angle);
+
+		} else if (tool_id === 'move_tool') {
 			var overlapping = false
 			if (Format.cube_size_limiter && !settings.deactivate_size_limit.value) {
 				Cube.selected.forEach(function(obj) {
@@ -513,11 +579,13 @@ new TransformerModule('edit', {
 			}
 		}
 		Mesh.selected.forEach(mesh => delete mesh.temp_data.uv_density_maps);
+		endGroupTransform();
 		autoFixMeshEdit()
 		updateSelection()
 	},
 	onCancel(context) {
 		Mesh.selected.forEach(mesh => delete mesh.temp_data.uv_density_maps);
+		endGroupTransform();
 		Undo.cancelEdit(true);
 	}
 });
